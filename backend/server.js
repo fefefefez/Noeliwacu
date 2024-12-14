@@ -10,6 +10,14 @@ const { error } = require("winston");
 const app = express();             // Créer une application express
 const port = process.env.PORT || 3000; // Utilisez $PORT fourni par Heroku ou 3000 par défaut
 
+// middleware http 
+app.use((req, res, next) => {
+    if (req.headers["x-forwarded-proto"] !== "https") {
+        return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+    next();
+});
+
 // Activer les middlewares
 app.use(cors());              // Activer CORS
 app.use(express.json());     // Activer le middleware pour le JSON
