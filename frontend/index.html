@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Santa</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Boite modale mot de passe -->
+    <div id="password-modal" class="modal">
+        <div class="modal-content">
+            <h2>Accès sécurisé</h2>
+            <input id="password-input" type="password" placeholder="Entrez le mot de passe">
+            <div id="modal-error" class="error-message">Mot de passe incorrect.</div>
+            <button onclick="checkPassword()">Valider</button>
+        </div>
+    </div>
+
+     <!-- Boîte modale pour l'authentification administrateur -->
+    <div id="admin-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Mot de passe administrateur</h2>
+            <input id="admin-password-input" type="password" placeholder="Entrez le mot de passe administrateur">
+            <div id="admin-modal-error" class="error-message hidden">Mot de passe incorrect.</div>
+            <button onclick="authenticateAdmin()">Valider</button>
+        </div>
+    </div>
+
+
+    <header>
+        <h1>🎄 Noël Iwacu Umwaka mwiza 🎅</h1>
+    </header>
+    <main id="main-container" class="hidden">
+        <div id="error-message" class="error-message"></div><!-- conteneur d'erreurs -->
+        <div id="success-message" class="success-message"></div><!-- conteneur de succès -->
+
+        <input id="participant-name" type="text" placeholder="Izina ryawe">
+        <input id="participant-email" type="email" placeholder="Email yawe canke y'umuvyeyi">
+        <button onclick="addParticipant()">Ajouter</button>
+        <button class="admin-only" onclick="generatePairs()">Générer les paires</button>
+        <ul id="participants-list" class="participants-list"></ul>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
