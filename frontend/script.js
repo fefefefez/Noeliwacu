@@ -256,14 +256,22 @@ function disableAdminButtons() {
 
 // Appeler la fonction pour désactiver les boutons Admin
 document.addEventListener("DOMContentLoaded", () => {
-    const isAdmin = confirm("Etes-vous un Admin ?");
-    if (!isAdmin) {
+    const adminModal = document.getElementById("custom-admin-modal");
+    const confirmButton = document.getElementById("admin-confirm");
+    const cancelButton = document.getElementById("admin-cancel");
+
+    adminModal.classList.remove("hidden");
+
+    confirmButton.addEventListener("click", () => {
+        adminModal.classList.add("hidden");
+        const adminFeaturesModal = document.getElementById("admin-modal");
+        adminFeaturesModal.classList.remove("hidden");
+    });
+
+    cancelButton.addEventListener("click", () => {
+        adminModal.classList.add("hidden");
         disableAdminButtons();
-    } 
-    else {
-       const adminModal = document.getElementById("admin-modal");
-       adminModal.classList.remove("hidden");  // Afficher la fenêtre modale Admin
-    }
+    });
 });
 
 // Ajouter les flocons de neige
