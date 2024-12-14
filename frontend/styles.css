@@ -64,7 +64,8 @@ body {
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 header {
@@ -79,6 +80,7 @@ h1 {
 
 main {
     padding: 20px;
+    padding-bottom: 100px;
 }
 
 /* Styles pour les messages d'erreur et de succès */
@@ -159,11 +161,15 @@ ul#participants-list {
     padding: 0;
     margin: 20px auto;
     max-width: 400px;
+    height: auto; /* Hauteur automatique */
+    max-height: 70vh; /* Limite la hauteur à 70% de la hauteur de l'écran */
+    overflow-y: auto; /* Ajoute un défilement vertical */
+    overflow-x: hidden; /* Cache le défilement horizontal */
     list-style: none;
     background-color: rgba(255, 255, 255, 0.8);
     border: 1px solid #ccc;
     border-radius: 8px;
-    overflow: hidden;
+    position: relative; /* Position relative pour les flocons de neige */
 }
 
 ul#participants-list li {
@@ -203,11 +209,12 @@ ul#participants-list .email {
     .snowflake {
         font-size: 1rem;
         animation-duration: 5s; 
+        display: none;
     }
      /* Ajuster le background */
      body {
         background-size: cover;
-        overflow: hidden;
+        overflow-y: auto;
         text-align: center;
     }
 
@@ -233,7 +240,9 @@ ul#participants-list .email {
     }
 
     ul#participants-list {
-        max-width: 95%; /* Réduire la largeur pour les mobiles */
+        max-width: 90%; /* Prend presque toute la largeur de l'écran */
+        max-height: 65vh; /* Réduit encore la hauteur pour les petits écrans */
+        overflow-y: auto; /* Garde le défilement vertical */
     }
 }
 @keyframes fall {
