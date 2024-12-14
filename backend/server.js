@@ -8,7 +8,7 @@ const mongoose = require("mongoose"); // Importer le module mongoose
 const { error } = require("winston");
 
 const app = express();             // Créer une application express
-const port = 3000;                // Définir le port du serveur
+const port = process.env.PORT || 3000; // Utilisez $PORT fourni par Heroku ou 3000 par défaut
 
 // Activer les middlewares
 app.use(cors());              // Activer CORS
