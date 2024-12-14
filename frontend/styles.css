@@ -197,8 +197,45 @@ ul#participants-list .email {
     animation: fall linear infinite;
     pointer-events: none;
     text-shadow: 0 0 5px #333, 0 0 10px #333;
+    z-index: 5; 
 }
+@media (max-width: 768px) {
+    .snowflake {
+        font-size: 1rem;
+        animation-duration: 5s; 
+    }
+     /* Ajuster le background */
+     body {
+        background-size: cover;
+        overflow: hidden;
+        text-align: center;
+    }
 
+    /* Marges et tailles ajustées */
+    header h1 {
+        font-size: 1.8rem;
+    }
+
+    main {
+        padding: 10px;
+    }
+
+    input, button {
+        font-size: 0.9rem;
+        padding: 8px;
+        width: 90%;
+        margin: 5px auto;
+    }
+
+    .modal-content {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    ul#participants-list {
+        max-width: 95%; /* Réduire la largeur pour les mobiles */
+    }
+}
 @keyframes fall {
     0% {
         transform: translateY(-100px);
