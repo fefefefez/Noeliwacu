@@ -270,6 +270,9 @@ document.addEventListener("DOMContentLoaded", () => {
 const MAX_SNOWFLAKES = 100;
 const snowflakes = [];
 
+// Vérifier si l'utilisateur est sur un appareil mobile
+const isMobile =  window.innerWidth <= 768;
+
 function createSnowflakes() {
     if (snowflakes.length >= MAX_SNOWFLAKES) {
         // Retirer les anciens flocons si la limite est atteinte
@@ -292,5 +295,9 @@ function createSnowflakes() {
         if (index > -1) snowflakes.splice(index, 1);
     }, 5000);
 }
-// Générer des flocons en boucle toutes les 50ms
-setInterval(createSnowflakes, 50);
+
+// Activer les flocons uniquement si ce n'est pas mobile
+if (!isMobile) {
+    setInterval(createSnowflakes, 100);
+}
+
