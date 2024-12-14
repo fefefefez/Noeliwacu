@@ -1,4 +1,4 @@
-const API_URL = "https://secret-santa-backend-31ce6d59f3bb.herokuapp.com"; // URL de l'API
+const API_URL = "https://api.noeliwacu.me"; // URL de l'API
 // Vérifier le mot de passe partagé
 async function checkPassword() {
     const enteredPassword = document.getElementById("password-input").value;
