@@ -194,8 +194,6 @@ async function getParticipants() {
         const response = await fetch(`${API_URL}/participants`);
         const result = await response.json();
 
-        console.log("Reponse Backend : ",result);
-
         if (result.success) {
             updateParticipantsList(result.participants);
         } else {
