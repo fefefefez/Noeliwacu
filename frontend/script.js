@@ -179,6 +179,18 @@ function anonymizeEmail(email) {
 // Mettre à jour la liste des participants
 function updateParticipantsList(participants) {
     const list = document.getElementById("participants-list");
+    const count = document.getElementById("participants-count");
+    const noParticipantsMessage = document.getElementById("no-participants-message");
+
+    // Si la liste des participants est vide
+    if (participants.length === 0) {
+        count.textContent = "";
+        noParticipantsMessage.classList.remove("hidden"); // Afficher le message
+    } else {
+        // mettre à jour le nombre de participants
+        count.textContent = `Nombre de participants : ${participants.length}`;
+        noParticipantsMessage.classList.add("hidden"); // Masquer le message
+    }
 
     list.innerHTML = participants.map((p) => `<li>
                                                 <span>🎅 ${p.name}</span>

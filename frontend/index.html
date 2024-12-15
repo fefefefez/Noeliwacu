@@ -50,6 +50,14 @@
         <input id="participant-email" type="email" placeholder="Email yawe canke y'umuvyeyi">
         <button onclick="addParticipant()">Ajouter</button>
         <button class="admin-only" onclick="generatePairs()">Générer les paires</button>
+
+        <!-- Ajout d'un compteur et d'un message -->
+        <div id="participants-header">
+            <h3 id="participants-count"></h3>
+            <p id="no-participants-message" class="hidden">Soyez le premier à rejoindre!</p>
+        </div>
+
+
         <ul id="participants-list" class="participants-list"></ul>
     </main>
     <script src="script.js"></script>

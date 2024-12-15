@@ -133,6 +133,26 @@ main {
     transform: translateY(0); /* Revient à sa position normale */
 }
 
+#participants-header {
+    margin: 20px auto;
+    text-align: center;
+}
+
+#participants-count {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #a1d5ff;
+}
+
+#no-participants-message {
+    font-size: 1rem;
+    font-style: italic;
+    color: #a1d5ff;
+    margin: 10px 0;
+}
+
+
+
 /* Styles spécifiques pour les formulaires */
 input, button {
     padding: 10px;
