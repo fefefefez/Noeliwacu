@@ -329,12 +329,12 @@ function createSnowflake() {
         snowflake.remove();
         const index = snowflakes.indexOf(snowflake);
         if (index > -1) snowflakes.splice(index, 1);
-    }, 5000);
+    }, 6000);
 }
 
 // Démarrer les flocons
 function startSnowflakes() {
-    snowflakeInterval = setInterval(createSnowflake, 100);
+    snowflakeInterval = setInterval(createSnowflake, 1000); 
 }
 // Supprimer tous les flocons
 function clearSnowflakes() {
