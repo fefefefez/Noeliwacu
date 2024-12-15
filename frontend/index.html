@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div id="snowflakes-container"></div>
     <!-- Boite modale mot de passe -->
     <div id="password-modal" class="modal">
         <div class="modal-content">
@@ -37,14 +38,14 @@
         </div>
     </div>
 
-
     <header>
         <h1>🎄 Noël Iwacu Umwaka mwiza 🎅</h1>
     </header>
     <main id="main-container" class="hidden">
         <div id="error-message" class="error-message"></div><!-- conteneur d'erreurs -->
         <div id="success-message" class="success-message"></div><!-- conteneur de succès -->
-
+    
+        
         <input id="participant-name" type="text" placeholder="Izina ryawe">
         <input id="participant-email" type="email" placeholder="Email yawe canke y'umuvyeyi">
         <button onclick="addParticipant()">Ajouter</button>

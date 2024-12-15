@@ -5,7 +5,6 @@ async function checkPassword() {
     const modal = document.getElementById("password-modal"); // Récupérer la fenêtre modale
     const mainContainer = document.getElementById("main-container"); // Récupérer le conteneur principal
     const modalError = document.getElementById("modal-error"); // Message d'erreur
-
     try {
         //envoyer une requête POST du mot de passe
         const response = await fetch(`${API_URL}/check-password`, {
@@ -277,26 +276,43 @@ document.addEventListener("DOMContentLoaded", () => {
 // Ajouter les flocons de neige
 const MAX_SNOWFLAKES = 100;
 const snowflakes = [];
+let snowflakeInterval;
 
-// Vérifier si l'utilisateur est sur un appareil mobile
-const isMobile =  window.innerWidth <= 768;
+// Récupérez le conteneur des flocons
+const snowflakeContainer = document.getElementById("snowflakes-container");
 
-function createSnowflakes() {
+// Récupérer toutes les modales
+const modals = [
+    document.getElementById("password-modal"),
+    document.getElementById("admin-modal"),
+    document.getElementById("custom-admin-modal")
+];
+
+
+
+// Fonction pour créer un flocon
+function createSnowflake() {
     if (snowflakes.length >= MAX_SNOWFLAKES) {
         // Retirer les anciens flocons si la limite est atteinte
-        snowflakes.shift().remove();
+        const oldFlake = snowflakes.shift();
+        if (oldFlake) oldFlake.remove();
     }
 
     const snowflake = document.createElement("div");
     snowflake.classList.add("snowflake");
     snowflake.textContent = "❄";
+
+    // Position et styles aléatoires
     snowflake.style.left = `${Math.random() * 100}vw`;
     snowflake.style.animationDuration = `${Math.random() * 3 + 2}s`;
     snowflake.style.fontSize = `${Math.random() * 10 + 10}px`;
+    snowflake.style.top = "0px";
 
-    document.body.appendChild(snowflake);
+    // Ajoutez le flocon au conteneur
+    snowflakeContainer.appendChild(snowflake);
     snowflakes.push(snowflake);
 
+    // Supprimez le flocon après sa durée d'animation
     setTimeout(() => {
         snowflake.remove();
         const index = snowflakes.indexOf(snowflake);
@@ -304,8 +320,35 @@ function createSnowflakes() {
     }, 5000);
 }
 
-// Activer les flocons uniquement si ce n'est pas mobile
-if (!isMobile) {
-    setInterval(createSnowflakes, 100);
+// Démarrer les flocons
+function startSnowflakes() {
+    snowflakeInterval = setInterval(createSnowflake, 100);
+}
+// Supprimer tous les flocons
+function clearSnowflakes() {
+    clearInterval(snowflakeInterval);
+    document.querySelectorAll(".snowflake").forEach(flake => flake.remove());
+}
+//verifier si une modale est visible
+function isAnyModalVisible() {
+    return modals.some(modal => !modal.classList.contains("hidden"));
 }
 
+const observer = new MutationObserver(() => {
+    const modalVisible  = isAnyModalVisible();
+    console.log("Modale visible :", isAnyModalVisible);
+
+    if (modalVisible) {
+        clearSnowflakes(); // Arrête les flocons
+    } else {
+        startSnowflakes(); // Relance les flocons
+    }
+});
+
+// Observer les changements sur les modales
+modals.forEach(modal => {
+    observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+});
+
+// Initialiser les flocons
+startSnowflakes();
