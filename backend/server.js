@@ -103,6 +103,13 @@ function isValidName(name) {
 
 // Fonction pour envoyer un email
 async function sendEmail(recepientEmail, secretSantaName) {
+    //test Mode envoi email
+    if (process.env.TEST_MODE === "true") {
+        console.log("Test mode: Simuler l'envoi de l'email à ${recepientEmail} pour ${secretSantaName}");
+        logger.info("Test mode: Simuler l'envoi de l'email à ${recepientEmail} pour ${secretSantaName}");
+        return;
+    }
+
     try {      
             //Configuration de Nodemailer
             const transporter = nodemailer.createTransport({
@@ -125,6 +132,7 @@ async function sendEmail(recepientEmail, secretSantaName) {
             const info = await transporter.sendMail(mailOptions);
             console.log(`Email envoyé: ${info.response}`);
         } catch (error) {
+            logger.error("Erreur lors de l'envoi de l'email:", error);
             console.error("Erreur lors de l'envoi de l'email:", error);
         }
 }
