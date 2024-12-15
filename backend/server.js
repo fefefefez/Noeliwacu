@@ -5,7 +5,6 @@ const cors = require("cors");       // Importer le module cors
 const morgan = require("morgan");  // Importer le module morgan
 const logger = require("./logger"); // Importer le module winston
 const mongoose = require("mongoose"); // Importer le module mongoose
-const { error } = require("winston");
 
 const app = express();             // Créer une application express
 const port = process.env.PORT || 3000; // Utilisez $PORT fourni par Heroku ou 3000 par défaut
@@ -31,24 +30,22 @@ app.use(
         }
     })
 );
-//test de la configuration de winston
-logger.info(`Serveur démarré`); // Enregistrer un message d'information
 
 // Connexion à la base de données MongoDB
-mongoose.connect(process.env.MONGODB_URI)  
+mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
-                logger.info("Connexion à la base de données établie");
-    })  
+        logger.info("Connexion à la base de données établie");
+    })
     .catch((error) => {
 
-                        logger.info(process.env.MONGODB_URI);
-                        logger.error("Erreur de connexion à la base de données:", error);
-                        return process.exit(1);
+        logger.info(process.env.MONGODB_URI);
+        logger.error("Erreur de connexion à la base de données:", error);
+        return process.exit(1);
     });
 
 const participantSchema = new mongoose.Schema({
-    name:   {type: String, required: true},
-    email:  {type: String, required: true},
+    name: { type: String, required: true },
+    email: { type: String, required: true },
 });
 
 const Participant = mongoose.model("Participant", participantSchema);
@@ -69,7 +66,7 @@ app.post("/check-password", (req, res) => {
     if (password === correctPassword) {
         logger.info("Mot de passe correct."); // Enregistrer un message d'information
         return res.json({ success: true });
-        
+
     } else {
         logger.warn("Mot de passe incorrect."); // Enregistrer un avertissement
         return res.json({ success: false });
@@ -79,7 +76,7 @@ app.post("/check-password", (req, res) => {
 // Route pour vérifier le mot de passe Admin
 app.post("/check-admin-password", (req, res) => {
     const { password } = req.body; // Récupérer le mot de passe de la requête
-    
+
     if (password === ADMIN_PASSWORD) {
         logger.info("Acces Admin accordé."); // Enregistrer un message d'information
         return res.json({ success: true });
@@ -110,31 +107,56 @@ async function sendEmail(recepientEmail, secretSantaName) {
         return;
     }
 
-    try {      
-            //Configuration de Nodemailer
-            const transporter = nodemailer.createTransport({
-                service: "gmail",
-                auth: {
-                    user: process.env.EMAIL, // utilisation de la variable d'environnement pour l'email
-                    pass: process.env.APP_PASS// Utilisation de la variable d'environnement pour le mot de passe
-                },
-            });
+    try {
+        //Configuration de Nodemailer
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL, // utilisation de la variable d'environnement pour l'email
+                pass: process.env.APP_PASS// Utilisation de la variable d'environnement pour le mot de passe
+            },
+        });
 
-            //Contenu de l'email
-            const mailOptions = {
-                from: `"Secret Santa 🎅" <${process.env.EMAIL}>`, // Adresse de l'expéditeur
-                to: recepientEmail,
-                subject: "Votre Secret Santa 🎄",
-                text: `Bonjour ! Vous êtes le Secret Santa de ${secretSantaName},Joyeux Noël !🎁`
-            };
+        //Contenu de l'email
+        const mailOptions = {
+            from: `"Secret Santa 🎅" <${process.env.EMAIL}>`, // Adresse de l'expéditeur
+            to: recepientEmail,
+            subject: "Votre Secret Santa 🎄 | Your Secret Santa 🎄",
+            text: `
+Amahoro! 
 
-            //Envoyer l'email
-            const info = await transporter.sendMail(mailOptions);
-            console.log(`Email envoyé: ${info.response}`);
-        } catch (error) {
-            logger.error("Erreur lors de l'envoi de l'email:", error);
-            console.error("Erreur lors de l'envoi de l'email:", error);
-        }
+🎁 Mwatowe kuba SECRET SANTA wa: ${secretSantaName} 🎄! 
+Noeli nziza 🎄🎄
+
+Hasigaye ko murondera agakado keza kazoryohera ${secretSantaName}!🎅
+
+--------------------
+
+Bonjour !
+
+🎁 Vous êtes le Secret Santa de : ${secretSantaName} 🎄
+Joyeux Noël 🎄🎄🎄
+
+Amusez vous bien à choisir un joli cadeau pour surprendre ${secretSantaName} ! 🎅
+
+--------------------
+
+Hello!
+
+🎁 You are the Secret Santa for: ${secretSantaName} 🎄
+Merry Christmas 🎄🎄🎄 
+
+Have fun choosing a lovely gift to surprise ${secretSantaName}! 🎅
+            `.trim(), // Texte bilingue pour l'email
+        };
+
+        //Envoyer l'email
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email envoyé: ${info.response}`);
+    } catch (error) {
+        logger.error("Erreur lors de l'envoi de l'email:", error);
+        console.error("Erreur lors de l'envoi de l'email:", error);
+    }
 }
 
 // Route pour ajouter un participant
@@ -149,9 +171,9 @@ app.post("/add-participant", async (req, res) => {
         logger.warn("Nom ou email manquant."); // Enregistrer une erreur
         return res.json({ success: false, message: "Nom ou email manquant." });
     }
-    
+
     // Vérifier le nom unique
-    const existingParticipant = await Participant.findOne({name});
+    const existingParticipant = await Participant.findOne({ name });
     if (existingParticipant) {
         logger.warn("Nom déjà ajouté."); // Enregistrer un avertissement
         return res.json({ success: false, message: "Nom déjà ajouté." });
@@ -163,28 +185,28 @@ app.post("/add-participant", async (req, res) => {
         return res.json({ success: false, message: "Nom invalide." });
     }
 
-     // Vérifier l'email valide
-     if (!isValidEmail(email)) {
+    // Vérifier l'email valide
+    if (!isValidEmail(email)) {
         logger.warn("Email invalide"); // Enregistrer un avertissement
         return res.json({ success: false, message: "Format d'Email invalide." });
     }
-    
+
     try {
         const newParticipant = new Participant({ name, email });
         await newParticipant.save();
 
         const participants = await Participant.find(); // Récupérer la liste des participants
-        
+
         logger.info(`Participant ajouté: Nom:=${name}, Email=${email}`); // Enregistrer l'ajout du participant
         res.json({ success: true, message: "Participant ajouté avec succès.", participants });
     } catch (error) {
-            logger.error("Erreur lors de l'ajout du participant:", error); // Enregistrer une erreur
-            return res.json({ success: false, message: "Erreur lors de l'ajout du participant." });
-        }
+        logger.error("Erreur lors de l'ajout du participant:", error); // Enregistrer une erreur
+        return res.json({ success: false, message: "Erreur lors de l'ajout du participant." });
     }
+}
 );
 // Route pour afficher les participants
-app.get("/participants", async(req, res) => {
+app.get("/participants", async (req, res) => {
     try {
         const participants = await Participant.find(); // Récupérer la liste des participants
         res.json({ success: true, participants });
@@ -195,7 +217,7 @@ app.get("/participants", async(req, res) => {
 });
 
 // Route pour générer les paires
-app.get("/generate-pairs", async(req, res) => {
+app.get("/generate-pairs", async (req, res) => {
 
     const adminPassword = req.headers["x-admin-password"]; // Récupérer le mot de passe Admin du header
 
@@ -210,30 +232,30 @@ app.get("/generate-pairs", async(req, res) => {
             logger.warn("Pas assez de participants."); // Enregistrer un avertissement
             return res.json({ success: false, message: "Pas assez de participants." });
         }
-    //Melanger les participants
-    const shuffledParticipants = [...participants].sort(() => 0.5 - Math.random());
+        //Melanger les participants
+        const shuffledParticipants = [...participants].sort(() => 0.5 - Math.random());
 
-    //Generer les paires
-    const pairs = shuffledParticipants.map((_, i, arr) => ({
+        //Generer les paires
+        const pairs = shuffledParticipants.map((_, i, arr) => ({
             giver: arr[i],
             receiver: arr[(i + 1) % arr.length], // Le receveur est le participant suivant
         }));
 
-    //Envoyer les emails
-    for (const pair of pairs) {
-        try {
-            await sendEmail(pair.receiver.email, pair.giver.name); // Envoyer l'email à chaque participant
-        } catch (error) {
-            logger.error("Erreur lors de l'envoi de l'email:", error); // Enregistrer une erreur
-            return res.json({ success: false, message: "Erreur lors de l'envoi de l'email." });
+        //Envoyer les emails
+        for (const pair of pairs) {
+            try {
+                await sendEmail(pair.receiver.email, pair.giver.name); // Envoyer l'email à chaque participant
+            } catch (error) {
+                logger.error("Erreur lors de l'envoi de l'email:", error); // Enregistrer une erreur
+                return res.json({ success: false, message: "Erreur lors de l'envoi de l'email." });
+            }
         }
-    }
-    logger.info("Paires générées et emails envoyés."); // Enregistrer un message d'information
-    res.json({ success: true, pairs });
+        logger.info("Paires générées et emails envoyés."); // Enregistrer un message d'information
+        res.json({ success: true, pairs });
 
-    }   catch (error) {
-            logger.error("Erreur lors de la génération des paires:", error); // Enregistrer une erreur
-            res.json({ success: false, message: "Erreur lors de la génération des paires." });
+    } catch (error) {
+        logger.error("Erreur lors de la génération des paires:", error); // Enregistrer une erreur
+        res.json({ success: false, message: "Erreur lors de la génération des paires." });
     }
 
 });
@@ -254,7 +276,7 @@ app.get("/reset", async (req, res) => {
         logger.error("Erreur lors de la réinitialisation des participants:", error); // Enregistrer une erreur
         res.json({ success: false, message: "Erreur lors de la réinitialisation des participants." });
     }
-}); 
+});
 
 // Démarrer le serveur
 app.listen(port, () => {
@@ -262,4 +284,4 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 }
 );
-   
+
