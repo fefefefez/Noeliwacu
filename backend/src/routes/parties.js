@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { createParty, getParty } = require('../controllers/partyController');
-const logger = require('../../logs/logger');
+const { verifiyPin } = require('../utils/helpers');
 const Party = require('../models/Party');
-const crypto = require('crypto');  // ✅ CHANGÉ : crypto au lieu de bcrypt
+const logger = require('../../logs/logger');
 
 
 // POST /api/parties - créer une nouvelle party
@@ -14,58 +14,44 @@ router.get('/:code', getParty);
 
 // POST /api/parties/:code/verify-pin - Vérifier le PIN administrateur
 router.post('/:code/verify-pin', async (req, res) => {
+    const { code } = req.params;
+    const { adminPin } = req.body;
+
+    logger.info(`POST /api/parties/${code}/verify-pin`);
+
     try {
-        const { code } = req.params;
-        const { adminPin } = req.body;
-
-        logger.info(`POST /api/parties/${code}/verify-pin`);
-
-        // Vérifier que le PIN est fourni
-        if (!adminPin) {
-            logger.warn(`❌ PIN administrateur manquant pour la party ${code}`);
-            return res.status(400).json({
-                success: false,
-                message: 'Le PIN admin est requis.'
-            });
-        }
-
-        // Trouver la party
         const party = await Party.findOne({ code });
+
         if (!party) {
             logger.warn(`❌ Party non trouvée: ${code}`);
             return res.status(404).json({
                 success: false,
-                message: 'Fête non trouvée.'
+                message: 'Party non trouvée'
             });
         }
 
-        // ✅ NOUVEAU : Hasher le PIN avec SHA-256 pour comparer
-        const hashedInputPin = crypto
-            .createHash('sha256')
-            .update(adminPin)
-            .digest('hex');
+        // ✅ Utiliser la fonction verifiyPin EXISTANTE
+        const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
 
-        // ✅ NOUVEAU : Comparer avec le hash stocké dans la DB
-        if (hashedInputPin !== party.adminPinHash) {
-            logger.warn(`❌ PIN admin invalide pour la party ${code}`);
+        if (!isPinValid) {
+            logger.warn(`❌ PIN incorrect pour la party ${code}`);
             return res.status(403).json({
                 success: false,
-                message: 'PIN administrateur incorrect.'
+                message: 'PIN administrateur incorrect'
             });
         }
 
-        logger.info(`✅ PIN admin validé pour la party ${code}`);
-        res.json({
-            success: true,
-            message: 'PIN validé',
-            drawDone: party.drawDone
-        });
+        logger.info(`✅ PIN vérifié avec succès pour la party ${code}`);
 
+        return res.status(200).json({
+            success: true,
+            message: 'PIN administrateur correct'
+        });
     } catch (error) {
-        logger.error(`❌ Erreur lors de la vérification du PIN pour la party ${req.params.code}: ${error.message}`);
-        res.status(500).json({
+        logger.error(`❌ Erreur lors de la vérification du PIN : ${error.message}`);
+        return res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Erreur serveur'
         });
     }
 });

@@ -100,12 +100,13 @@ export default function CreateParty() {
 
                         {/* Admin PIN */}
                         <div>
-                            <label>Code PIN Administrateur (4 chiffres) *</label>
+                            <label>Creer Votre PIN Administrateur (4 chiffres) *</label>
                             <input
                                 type="password"
                                 placeholder="1234"
                                 pattern="[0-9]{4}"
                                 title="Veuillez entrer exactement 4 chiffres"
+                                maxLength="4"
                                 value={formData.adminPin}
                                 onChange={(e) => setFormData({ ...formData, adminPin: e.target.value })}
                                 required
@@ -120,7 +121,7 @@ export default function CreateParty() {
                             <label>Budget (optionnel)</label>
                             <input
                                 type="number"
-                                placeholder="30"
+                                placeholder="15"
                                 min="1"
                                 value={formData.budget}
                                 onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
@@ -139,32 +140,65 @@ export default function CreateParty() {
 
                         {/* Family Groups */}
                         <div style={{ marginTop: '20px' }}>
-                            <label>Groupes Familiaux * (min. 2)</label>
-                            <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', display: 'block', marginBottom: '10px' }}>
-                                Les personnes de la même famille ne seront pas jumelées ensemble
-                            </small>
+                            <label>Familles * (min. 2)</label>
 
                             {formData.families.map((family, index) => (
-                                <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: 'flex',
+                                        gap: '10px',
+                                        marginBottom: '10px',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    {/* ✅ INPUT PREND TOUTE LA PLACE DISPONIBLE */}
                                     <input
                                         type="text"
                                         placeholder={`Famille ${index + 1} (ex: Martin, Dupont)`}
                                         value={family}
                                         onChange={(e) => handleFamilyChange(index, e.target.value)}
-                                        style={{ flex: 1, margin: 0 }}
+                                        required
+                                        style={{
+                                            flex: 1,
+                                            margin: 0
+                                        }}
                                     />
+
+                                    {/* ✅ BOUTON A UNE LARGEUR FIXE */}
                                     {formData.families.length > 2 && (
                                         <button
                                             type="button"
+                                            className="primary"
                                             onClick={() => handleRemoveFamily(index)}
                                             style={{
-                                                background: '#dc3545',
-                                                padding: '10px 20px',
-                                                minWidth: 'auto',
-                                                margin: 0
+                                                background: '#dc2626',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                width: '45px',
+                                                height: '45px',
+                                                minWidth: '45px',
+                                                flexShrink: 0,
+                                                cursor: 'pointer',
+                                                fontSize: '20px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s',
+                                                padding: 0
                                             }}
+                                            onMouseEnter={(e) => {
+                                                e.target.style.background = '#b91c1c';
+                                                e.target.style.transform = 'scale(1.05)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.background = '#dc2626';
+                                                e.target.style.transform = 'scale(1)';
+                                            }}
+                                            aria-label={`Supprimer la famille ${index + 1}`}
                                         >
-                                            ❌
+                                            ✕
                                         </button>
                                     )}
                                 </div>

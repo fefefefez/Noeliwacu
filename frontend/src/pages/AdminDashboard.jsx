@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { getParty, getParticipants, generateDrawPreview, sendDraw, verifyAdminPin } from '../services/api';  // ✅ AJOUTÉ verifyAdminPin
+import { getParty, getParticipants, generateDrawPreview, sendDraw, verifyAdminPin } from '../services/api';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
