@@ -76,7 +76,7 @@ export default function JoinParty() {
                 setError(data.message);
             }
         } catch (err) {
-            setError('Erreur lors de l\'inscription. Veuillez réessayer.');
+            setError(err.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
         } finally {
             setLoading(false);
         }
@@ -129,11 +129,20 @@ export default function JoinParty() {
                                 <label>Votre Nom *</label>
                                 <input
                                     type="text"
-                                    placeholder="ex.Jean Bagabo"
+                                    placeholder="ex: Jean Bagabo"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     required
                                 />
+                                {/* ✅ AJOUTÉ : Hint pour le nom */}
+                                <small style={{
+                                    color: 'rgba(255, 255, 255, 0.6)',
+                                    fontSize: '0.85rem',
+                                    display: 'block',
+                                    marginTop: '5px'
+                                }}>
+                                    Lettres, espaces, accents et traits d'union uniquement (pas de chiffres)
+                                </small>
                             </div>
 
                             <div>
@@ -145,7 +154,7 @@ export default function JoinParty() {
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
                                 />
-                                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', display: 'block', marginTop: '5px' }}>
+                                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', display: 'block', marginTop: '5px' }}>
                                     Vous recevrez votre Secret Santa ici
                                 </small>
                             </div>
@@ -156,30 +165,13 @@ export default function JoinParty() {
                                     value={formData.familyGroup}
                                     onChange={(e) => setFormData({ ...formData, familyGroup: e.target.value })}
                                     required
-                                    style={{
-                                        color: 'white'
-                                    }}
+                                    style={{ color: 'white' }}
                                 >
-                                    <option
-                                        value=""
-                                        style={{
-                                            color: 'rgba(255, 255, 255, 0.7)',  // ✅ Gris clair
-                                            backgroundColor: 'rgba(30, 30, 30, 0.95)',  // ✅ Fond sombre
-                                            padding: '10px'
-                                        }}
-                                    >
+                                    <option value="" style={{ color: 'rgba(255, 255, 255, 0.7)', backgroundColor: 'rgba(30, 30, 30, 0.95)', padding: '10px' }}>
                                         Sélectionnez votre famille
                                     </option>
                                     {partyInfo.families.map((family) => (
-                                        <option
-                                            key={family}
-                                            value={family}
-                                            style={{
-                                                color: 'white',  // ✅ Texte blanc
-                                                backgroundColor: 'rgba(30, 30, 30, 0.95)',  // ✅ Fond sombre
-                                                padding: '10px'
-                                            }}
-                                        >
+                                        <option key={family} value={family} style={{ color: 'white', backgroundColor: 'rgba(30, 30, 30, 0.95)', padding: '10px' }}>
                                             {family}
                                         </option>
                                     ))}
@@ -188,7 +180,7 @@ export default function JoinParty() {
 
                             <div style={{ marginTop: '20px' }}>
                                 <label>Wishlist (optionnel - max 3 articles)</label>
-                                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', display: 'block', marginBottom: '10px' }}>
+                                <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', display: 'block', marginBottom: '10px' }}>
                                     Aidez votre Secret Santa à choisir le cadeau parfait !
                                 </small>
                                 {formData.wishList.map((wish, index) => (
@@ -218,12 +210,7 @@ export default function JoinParty() {
 
                     <button
                         onClick={() => navigate('/')}
-                        style={{
-                            width: '100%',
-                            marginTop: '10px',
-                            background: '#6c757d',
-                            color: 'white'
-                        }}
+                        style={{ width: '100%', marginTop: '10px', background: '#6c757d', color: 'white' }}
                     >
                         ← Retour à l'accueil
                     </button>
