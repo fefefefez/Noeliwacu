@@ -1,0 +1,9 @@
+{
+    "name": "secret-santa-v2-root",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "start": "cd backend && npm start",
+        "heroku-postbuild": "cd backend && npm install"
+    }
+}
