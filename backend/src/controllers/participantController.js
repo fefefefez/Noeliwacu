@@ -25,7 +25,15 @@ async function addParticipant(req, res) {
     if (!isValidName(name)) {
         logger.warn(`❌ Validation échouée : Format invalide (name: "${name}")`);
         return res.status(400).json({
+            success: false,
             message: 'Format de nom invalide.'
+        });
+    }
+    if (!isValidEmail(email)) {
+        logger.warn(`❌ Validation échouée : Format invalide (email: "${email}")`);
+        return res.status(400).json({
+            success: false,
+            message: 'Format d\'email invalide.'
         });
     }
 
