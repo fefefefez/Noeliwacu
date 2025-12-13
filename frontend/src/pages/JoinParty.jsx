@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addParticipant, getParty } from "../services/api";
+import Alert from "../components/Alert";
 
 export default function JoinParty() {
     const navigate = useNavigate();
@@ -65,7 +66,7 @@ export default function JoinParty() {
             });
 
             if (data.success) {
-                setSuccess('✅ Vous avez rejoint la fête avec succès ! Vous recevrez un email une fois le tirage effectué.');
+                setSuccess(' Vous avez rejoint la fête avec succès ! Vous recevrez un email une fois le tirage effectué.');
                 setFormData({
                     name: '',
                     email: '',
@@ -134,7 +135,6 @@ export default function JoinParty() {
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     required
                                 />
-                                {/* ✅ AJOUTÉ : Hint pour le nom */}
                                 <small style={{
                                     color: 'rgba(255, 255, 255, 0.6)',
                                     fontSize: '0.85rem',
@@ -194,8 +194,20 @@ export default function JoinParty() {
                                 ))}
                             </div>
 
-                            {error && <div className="alert alert-error">{error}</div>}
-                            {success && <div className="alert alert-success">{success}</div>}
+                            {/* ✅ ALERTES INTÉGRÉES DANS LE FORMULAIRE */}
+                            <Alert
+                                type="error"
+                                message={error}
+                                onClose={() => setError('')}
+                            />
+
+                            <Alert
+                                type="success"
+                                message={success}
+                                onClose={() => setSuccess('')}
+                                autoClose={true}
+                                autoCloseDuration={5000}
+                            />
 
                             <button
                                 type="submit"

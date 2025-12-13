@@ -27,7 +27,7 @@ async function addParticipant(req, res) {
         logger.warn(`❌ Validation échouée : Format de nom invalide (name: "${name}")`);
         return res.status(400).json({
             success: false,
-            message: 'Le nom doit contenir uniquement des lettres, espaces, accents et traits d\'union (pas de chiffres ni de caractères spéciaux).'
+            message: 'Le nom doit contenir uniquement des lettres, espaces, accents et traits d\'union.'
         });
     }
 
