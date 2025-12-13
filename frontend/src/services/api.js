@@ -9,27 +9,30 @@ export const createParty = async (partyData) => {
             body: JSON.stringify(partyData)
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to create party: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
 export const getParty = async (code) => {
     try {
         const response = await fetch(`${API_URL}/parties/${code}`);
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to fetch party: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
@@ -42,27 +45,28 @@ export const addParticipant = async (code, participantData) => {
             body: JSON.stringify(participantData)
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const data = await response.json();
 
-        return await response.json();
+        return data;
+
     } catch (error) {
-        throw new Error(`Failed to add participant: ${error.message}`);
+        // ✅ Erreur réseau (pas de réponse du serveur)
+        throw new Error('Erreur de connexion au serveur. Vérifiez votre connexion internet.');
     }
 };
 
 export const getParticipants = async (code) => {
     try {
         const response = await fetch(`${API_URL}/participants/party/${code}`);
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to fetch participants: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
@@ -75,13 +79,15 @@ export const generateDrawPreview = async (code, adminPin) => {
             body: JSON.stringify({ adminPin })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to generate draw preview: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
@@ -93,27 +99,30 @@ export const sendDraw = async (code, adminPin) => {
             body: JSON.stringify({ adminPin })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to send draw emails: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
 export const getDrawStatus = async (code) => {
     try {
         const response = await fetch(`${API_URL}/parties/${code}/draw/status`);
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to fetch draw status: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 
@@ -126,13 +135,15 @@ export const verifyAdminPin = async (code, adminPin) => {
             body: JSON.stringify({ adminPin })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        throw new Error(`Failed to verify admin PIN: ${error.message}`);
+        throw new Error(error.message || 'Erreur de connexion au serveur');
     }
 };
 

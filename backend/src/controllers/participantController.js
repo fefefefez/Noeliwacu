@@ -16,17 +16,16 @@ async function addParticipant(req, res) {
     // Validation basique
     if (!name || !email || !familyGroup) {
         logger.warn(`❌ Validation échouée : Données manquantes (name: ${!!name}, email: ${!!email}, familyGroup: ${!!familyGroup})`);
-        return res.status(400).json({  // ✅ CHANGÉ
+        return res.status(400).json({
             success: false,
             message: 'Nom, email et groupe familial sont obligatoires.'
         });
     }
 
-    if (!isValidName(name) || !isValidEmail(email)) {
-        logger.warn(`❌ Validation échouée : Format invalide (name: "${name}", email: "${email}")`);
-        return res.status(400).json({  // ✅ CHANGÉ
-            success: false,
-            message: 'Nom ou email invalide.'
+    if (!isValidName(name)) {
+        logger.warn(`❌ Validation échouée : Format invalide (name: "${name}")`);
+        return res.status(400).json({
+            message: 'Format de nom invalide.'
         });
     }
 
