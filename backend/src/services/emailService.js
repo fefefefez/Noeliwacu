@@ -1,0 +1,252 @@
+const nodemailer = require('nodemailer');
+const logger = require('../../logs/logger');
+
+/**
+ * Service d'envoi d'emails via Nodemailer
+ * @param {Object} giver - Le participant qui donne
+ * @param {Object} receiver - Le participant qui reçoit
+ * @param {Object} party - La party
+ * @returns {Promise<Object>} - Résultat de l'envoi de l'email
+ */
+async function sendSecretSantaEmail(giver, receiver, party) {
+
+    // Mode Test : Log de l'email au lieu de l'envoyer
+    if (process.env.TEST_MODE === 'true') {
+        logger.info(`✉️ [TEST MODE] Email simulé pour ${giver.name} (${giver.email})`);
+
+        const emailPreview = [
+            '\n' + '='.repeat(70),
+            '📧 TEST EMAIL PREVIEW',
+            '='.repeat(70),
+            `De      : Secret Santa 🎅 <${process.env.EMAIL || 'noreply@secretsanta.com'}>`,
+            `À       : ${giver.email}`,
+            `Sujet   : 🎄 Secret Santa ${party.name} - Ton cadeau surprise !`,
+            '─'.repeat(70),
+            `\nBonjour ${giver.name} ! 🎄\n`,
+            `🎁 Tu es le Secret Santa de : ${receiver.name.toUpperCase()}\n`
+        ];
+
+        if (receiver.wishList && receiver.wishList.length > 0) {
+            emailPreview.push(`Liste de souhaits de ${receiver.name} :`);
+            receiver.wishList.forEach((item, i) => {
+                emailPreview.push(`  ${i + 1}. ${item}`);
+            });
+            emailPreview.push('');
+        } else {
+            emailPreview.push(`${receiver.name} n'a pas encore indiqué de liste de souhaits.\n`);
+        }
+
+        if (party.budget) {
+            emailPreview.push(`💰 Budget suggéré : ${party.budget}€`);
+        }
+
+        if (party.date) {
+            emailPreview.push(`📅 Date de l'événement : ${new Date(party.date).toLocaleDateString('fr-FR')}`);
+        }
+
+        emailPreview.push('\n🤫 Garde le secret ! Ne révèle à personne qui tu as tiré.');
+        emailPreview.push('\nJoyeux Noël ! 🎄🎅');
+        emailPreview.push('='.repeat(70) + '\n');
+
+        logger.info(emailPreview.join('\n'));
+
+        return {
+            success: true,
+            testMode: true,
+            recipient: giver.email,
+            giverId: giver._id
+        };
+    }
+
+    // Mode Production : Envoi réel de l'email
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL,
+                pass: process.env.APP_PASS
+            }
+        });
+
+        // Wishlist HTML
+        const wishlistHtml = receiver.wishList && receiver.wishList.length > 0
+            ? `
+                <div style="background-color: #f3e5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #6a1b9a; margin: 0 0 15px 0;">🎁 Wishlist de ${receiver.name} :</h3>
+                    <ul style="line-height: 2; color: #333; margin: 0; padding-left: 25px;">
+                        ${receiver.wishList.map(item => `<li style="margin-bottom: 8px;">${item}</li>`).join('')}
+                    </ul>
+                </div>
+            `
+            : `
+                <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                    <p style="color: #e65100; margin: 0; font-style: italic;">
+                        ℹ️ ${receiver.name} n'a pas encore indiqué de Wishlist.
+                    </p>
+                </div>
+            `;
+
+        const mailOptions = {
+            from: `"Secret Santa 🎅" <${process.env.EMAIL}>`,
+            to: giver.email,
+            subject: `🎄 Secret Santa ${party.name} - Ton cadeau surprise !`,
+            html: `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+                    
+                    <!-- Container principal -->
+                    <div style="background-color: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        
+                        <!-- Header avec image de fond -->
+                        <div style="background: linear-gradient(135deg, #c62828 0%, #d32f2f 100%); padding: 40px 30px; text-align: center; position: relative;">
+                            <h1 style="color: white; margin: 0; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                                🎅 Secret Santa
+                            </h1>
+                            <h2 style="color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-size: 22px; font-weight: normal;">
+                                ${party.name}
+                            </h2>
+                        </div>
+
+                        <!-- Corps du message -->
+                        <div style="padding: 40px 30px;">
+                            
+                            <!-- Salutation -->
+                            <p style="font-size: 18px; color: #333; margin: 0 0 25px 0;">
+                                Bonjour <strong>${giver.name}</strong> ! 🎄
+                            </p>
+
+                            <!-- Révélation du Secret Santa -->
+                            <div style="background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%); padding: 30px; border-radius: 12px; text-align: center; margin: 25px 0; box-shadow: 0 3px 10px rgba(21,101,192,0.3);">
+                                <p style="color: white; margin: 0 0 10px 0; font-size: 18px; opacity: 0.95;">
+                                    🎁 Tu es le Secret Santa de :
+                                </p>
+                                <h2 style="color: white; margin: 0; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); letter-spacing: 1px;">
+                                    ${receiver.name.toUpperCase()}
+                                </h2>
+                            </div>
+
+                            <!-- Wishlist -->
+                            ${wishlistHtml}
+
+                            <!-- Budget -->
+                            ${party.budget ? `
+                            <div style="background-color: #e8f5e9; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2e7d32;">
+                                <p style="margin: 0; color: #1b5e20; font-size: 16px;">
+                                    <strong>💰 Budget suggéré :</strong> ${party.budget}€
+                                </p>
+                            </div>
+                            ` : ''}
+
+                            <!-- Date -->
+                            ${party.date ? `
+                            <div style="background-color: #fff3e0; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f57c00;">
+                                <p style="margin: 0; color: #e65100; font-size: 16px;">
+                                    <strong>📅 Date de l'événement :</strong> ${new Date(party.date).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            })}
+                                </p>
+                            </div>
+                            ` : ''}
+
+                            <!-- Message de clôture -->
+                            <div style="margin-top: 35px; padding-top: 25px; border-top: 2px dashed #e0e0e0;">
+                                <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0; text-align: center;">
+                                    Amuse-toi bien à choisir un joli cadeau pour surprendre ${receiver.name} ! 🎅
+                                </p>
+                                
+                                <!-- Alerte secret -->
+                                <div style="background-color: #ffebee; padding: 20px; border-radius: 8px; border: 2px solid #ef5350; text-align: center;">
+                                    <p style="color: #c62828; font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">
+                                        🤫 Garde le secret !
+                                    </p>
+                                    <p style="color: #d32f2f; font-size: 14px; margin: 0;">
+                                        Ne révèle à personne qui tu as tiré au sort.
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f5f5f5; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="color: #1565c0; font-size: 20px; font-weight: bold; margin: 0 0 10px 0;">
+                                🎄 Joyeux Noël ! 🎄
+                            </p>
+                            <p style="color: #999; font-size: 12px; margin: 0; font-style: italic;">
+                                Cet email est destiné à <strong>${giver.name}</strong> (${giver.email})
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <!-- Note technique -->
+                    <p style="color: #999; font-size: 11px; text-align: center; margin-top: 20px;">
+                        Secret Santa V2.0 - Ne pas répondre à cet email
+                    </p>
+
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        logger.info(`✅ Email envoyé avec succès à ${giver.email} (${giver.name}). Message ID: ${info.messageId}`);
+
+        return {
+            success: true,
+            info,
+            recipient: giver.email,
+            giverId: giver._id
+        };
+    } catch (error) {
+        logger.error(`❌ Erreur lors de l'envoi de l'email à ${giver.email} : ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Envoie de tous les emails du Secret Santa
+ * @param {Array} pairs - Les paires de participants
+ * @param {Object} party - La party
+ * @returns {Promise<Object>} - Résultats de l'envoi
+ */
+async function sendAllEmails(pairs, party) {
+    const results = {
+        total: pairs.length,
+        sent: 0,
+        failed: 0,
+        errors: []
+    };
+
+    logger.info(`📧 Début de l'envoi de ${pairs.length} emails pour la party "${party.name}"...`);
+
+    for (const pair of pairs) {
+        try {
+            await sendSecretSantaEmail(pair.giver, pair.receiver, party);
+            results.sent++;
+
+            // ✅ Pause de 1000ms entre les envois (sauf en TEST_MODE)
+            if (process.env.TEST_MODE !== 'true') {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        } catch (error) {
+            results.failed++;
+            results.errors.push({
+                giver: pair.giver.name,
+                email: pair.giver.email,
+                error: error.message
+            });
+            logger.error(`❌ Échec d'envoi pour ${pair.giver.name} : ${error.message}`);
+        }
+    }
+
+    logger.info(`✅ Envoi terminé : ${results.sent}/${results.total} emails envoyés avec succès, ${results.failed} échec(s).`);
+
+    return results;
+}
+
+module.exports = {
+    sendSecretSantaEmail,
+    sendAllEmails
+};
