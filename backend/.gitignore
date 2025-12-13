@@ -1,6 +1,6 @@
 # Logs
-logs/
-*.log
+logs/*.log
+!logs/logger.js
 
 # Node modules
 node_modules/
