@@ -115,7 +115,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                             </p>
 
                             <!-- Révélation du Secret Santa -->
-                            <div style="background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%); padding: 30px; border-radius: 12px; text-align: center; margin: 25px 0; box-shadow: 0 3px 10px rgba(21,101,192,0.3);">
+                            <div style="background: linear-gradient(135deg, #15c087ff 0%, #1976d2 100%); padding: 30px; border-radius: 12px; text-align: center; margin: 25px 0; box-shadow: 0 3px 10px rgba(21,101,192,0.3);">
                                 <p style="color: white; margin: 0 0 10px 0; font-size: 18px; opacity: 0.95;">
                                     🎁 Tu es le Secret Santa de :
                                 </p>
