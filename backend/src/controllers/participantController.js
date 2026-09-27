@@ -7,7 +7,7 @@ async function addParticipant(req, res) {
     const { code } = req.params;
     let { name, email, familyGroup, wishList } = req.body;
 
-    logger.info(`POST /api/participants/${code} - Tentative d'ajout de participant`);
+    logger.info(`POST /api/participants - Tentative d'ajout de participant`);
 
     // Normalisation
     name = name.trim().toUpperCase();
@@ -15,7 +15,7 @@ async function addParticipant(req, res) {
 
     // Validation basique
     if (!name || !email || !familyGroup) {
-        logger.warn(`❌ Validation échouée : Données manquantes (name: ${!!name}, email: ${!!email}, familyGroup: ${!!familyGroup})`);
+        logger.warn(`❌ Validation échouée : Données manquantes`);
         return res.status(400).json({
             success: false,
             message: 'Nom, email et groupe familial sont obligatoires.'
@@ -24,7 +24,7 @@ async function addParticipant(req, res) {
 
     // ✅ VALIDATION NOM (Message spécifique et détaillé)
     if (!isValidName(name)) {
-        logger.warn(`❌ Validation échouée : Format de nom invalide (name: "${name}")`);
+        logger.warn(`❌ Validation échouée : Format de nom invalide`);
         return res.status(400).json({
             success: false,
             message: 'Le nom doit contenir uniquement des lettres, espaces, accents et traits d\'union.'
@@ -33,7 +33,7 @@ async function addParticipant(req, res) {
 
     // ✅ VALIDATION EMAIL (Message spécifique)
     if (!isValidEmail(email)) {
-        logger.warn(`❌ Validation échouée : Format d'email invalide (email: "${email}")`);
+        logger.warn(`❌ Validation échouée : Format d'email invalide`);
         return res.status(400).json({
             success: false,
             message: 'L\'adresse email n\'est pas valide. Exemple : jean@exemple.com'
@@ -43,7 +43,7 @@ async function addParticipant(req, res) {
     try {
         const party = await Party.findOne({ code });
         if (!party) {
-            logger.warn(`❌ Party non trouvée : ${code}`);
+            logger.warn(`❌ Party non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Party non trouvée.'
@@ -51,7 +51,7 @@ async function addParticipant(req, res) {
         }
 
         if (party.drawDone) {
-            logger.warn(`❌ Tirage déjà effectué pour la party ${code}, ajout refusé`);
+            logger.warn(`❌ Tirage déjà effectué, ajout refusé`);
             return res.status(403).json({
                 success: false,
                 message: 'Le tirage au sort a déjà été effectué. Impossible d\'ajouter de nouveaux participants.'
@@ -60,7 +60,7 @@ async function addParticipant(req, res) {
 
         // Vérifier que le groupe familial existe dans la party
         if (!party.families.includes(familyGroup)) {
-            logger.warn(`❌ Famille invalide : "${familyGroup}" pour la party ${code}. Familles disponibles : ${party.families.join(', ')}`);
+            logger.warn(`❌ Groupe familial invalide`);
             return res.status(400).json({
                 success: false,
                 message: `La famille "${familyGroup}" n'existe pas dans cette fête. Veuillez choisir une famille dans la liste.`
@@ -72,7 +72,7 @@ async function addParticipant(req, res) {
         const participantCount = await Participant.countDocuments({ partyId: party._id });
 
         if (participantCount >= MAX_PARTICIPANTS) {
-            logger.warn(`❌ Limite de participants atteinte pour la party ${code} (${participantCount}/${MAX_PARTICIPANTS})`);
+            logger.warn(`❌ Limite de participants atteinte`);
             return res.status(400).json({
                 success: false,
                 message: `Limite de participants atteinte (${MAX_PARTICIPANTS} maximum).`
@@ -87,7 +87,7 @@ async function addParticipant(req, res) {
         });
 
         if (existingParticipant) {
-            logger.warn(`❌ Tentative de doublon : ${name} (${email}) dans la party ${code}`);
+            logger.warn(`❌ Tentative d'ajout d'un participant deja existant`);
             return res.status(409).json({
                 success: false,
                 message: `Une personne avec le nom "${name}" et l'email "${email}" est déjà inscrite à cette fête.`
@@ -103,7 +103,7 @@ async function addParticipant(req, res) {
         });
 
         await participant.save();
-        logger.info(`✅ Participant ajouté : ${name} (${email}) - Famille: ${familyGroup} - Party: ${code}`);
+        logger.info(`✅ Participant ajouté`);
 
         res.status(201).json({
             success: true,
@@ -116,13 +116,13 @@ async function addParticipant(req, res) {
         });
     } catch (error) {
         if (error.code === 11000) {
-            logger.warn(`❌ Erreur de clé dupliquée pour ${name} dans la party ${code}`);
+            logger.warn(`❌ Erreur de clé dupliquée lors de l'ajout d'un participant`);
             return res.status(409).json({
                 success: false,
                 message: `Une personne avec le nom "${name}" est déjà inscrite à cette fête.`
             });
         }
-        logger.error(`❌ Erreur lors de l'ajout du participant ${name} (${email}): ${error.message}`);
+        logger.error(`❌ Erreur lors de l'ajout d'un participant`);
         res.status(500).json({
             success: false,
             message: 'Erreur serveur lors de l\'inscription. Veuillez réessayer.'
@@ -133,13 +133,13 @@ async function addParticipant(req, res) {
 async function getParticipants(req, res) {
     const { code } = req.params;
 
-    logger.info(`GET /api/participants/party/${code}`);
+    logger.info(`GET /api/participants/party`);
 
     try {
         const party = await Party.findOne({ code });
 
         if (!party) {
-            logger.warn(`❌ Party non trouvée : ${code}`);
+            logger.warn(`❌ Party non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Party non trouvée.'
@@ -150,7 +150,7 @@ async function getParticipants(req, res) {
             .select('name email familyGroup wishList')
             .sort({ createdAt: 1 });
 
-        logger.info(`✅ ${participants.length} participant(s) récupéré(s) pour la party ${code}`);
+        logger.info(`✅ ${participants.length} participants récupérés`);
 
         res.json({
             success: true,
@@ -159,7 +159,7 @@ async function getParticipants(req, res) {
         });
 
     } catch (error) {
-        logger.error(`❌ Erreur lors de la récupération des participants pour ${code}: ${error.message}`);
+        logger.error(`❌ Erreur lors de la récupération des participants`);
         res.status(500).json({
             success: false,
             message: 'Erreur serveur.'

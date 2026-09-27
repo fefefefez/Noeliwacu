@@ -31,7 +31,7 @@ async function verifyAdminPin(req, res, next) {
         const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
 
         if (!isPinValid) {
-            logger.warn(`Tentative d'accès non autorisée à la party ${code} avec un PIN administrateur incorrect.`);
+            logger.warn(`Tentative d'accès administratif non autorisée`);
             return res.json({
                 success: false,
                 message: 'PIN administrateur incorrect.'
@@ -40,12 +40,12 @@ async function verifyAdminPin(req, res, next) {
 
         // PIN valide, continuer vers le contrôleur
         req.party = party;
-        logger.info(`Accès administrateur autorisé à la party ${code}.`);
+        logger.info(`Accès administrateur autorisé`);
 
         next(); // passer au contrôleur suivant
 
     } catch (error) {
-        logger.error(`Erreur lors de la verification du PIN admin: ${error.message}`);
+        logger.error(`Erreur lors de la verification du PIN admin`);
         res.json({
             success: false,
             message: 'Erreur d\'authentification.'

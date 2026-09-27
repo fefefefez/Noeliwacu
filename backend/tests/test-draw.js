@@ -58,8 +58,6 @@ async function runTests() {
         partyCode = partyData.party.code;
 
         console.log(`✅ Party créée avec succès !`);
-        console.log(`   📌 Code : ${partyCode}`);
-        console.log(`   📛 Nom : ${partyData.party.name}`);
 
         await sleep(500);
 
@@ -85,8 +83,7 @@ async function runTests() {
                 throw new Error(`Échec ajout ${participant.name}: ${data.message}`);
             }
 
-            console.log(`  ${i + 1}. ✅ ${participant.name.padEnd(20)} | ${participant.familyGroup.padEnd(10)} | ${participant.email}`);
-
+            console.log(`  ${i + 1}. ✅ Participant ajouté`);
             await sleep(200);
         }
 
@@ -189,7 +186,7 @@ async function runTests() {
         title('❌ ÉCHEC DU TEST');
         console.error(`\n🚨 Erreur : ${error.message}`);
         if (partyCode) {
-            console.log(`\n📌 Code party : ${partyCode}`);
+            console.log('\n📌 Test terminé');
         }
         process.exit(1);
     }

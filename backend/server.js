@@ -24,7 +24,7 @@ app.use(express.json()); // Middleware pour parser le JSON
 
 // Logger les requetes HTTP entrantes
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.path}`);
+    logger.info(`${req.method} request`);
     next();
 });
 
@@ -80,17 +80,17 @@ mongoose
         app.listen(PORT, () => {
             logger.info(`🚀 Serveur démarré sur le port ${PORT}`);
             logger.info(`📍 Mode: ${process.env.NODE_ENV || 'development'}`);
-            logger.info(`📧 Email: ${process.env.EMAIL || 'non configuré'}`);
+            logger.info(`📧 Email configuré: ${process.env.EMAIL ? 'oui' : 'non'}`);
             logger.info(`🧪 TEST_MODE: ${process.env.TEST_MODE === 'true' ? 'ACTIVÉ ⚠️' : 'DÉSACTIVÉ'}`);
         });
     })
     .catch((error) => {
-        logger.error("❌ Erreur de connexion à la base de données MongoDB:", error);
+        logger.error('❌ Erreur de connexion à la base de données MongoDB');
         process.exit(1);
     });
 
 // Gestion des erreurs non capturées
 process.on("unhandledRejection", (err) => {
-    logger.error(`❌ Unhandled Rejection: ${err.message}`);
+    logger.error('❌ Erreur non gérée ');
     process.exit(1);
 });

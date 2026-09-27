@@ -17,11 +17,11 @@ async function generateDrawPreview(req, res) {
         const { code } = req.params;
         const { adminPin } = req.body;
 
-        logger.info(`🔔 Génération de l'aperçu du tirage pour la partie ${code}`);
+        logger.info(`🔔 Génération de l'aperçu du tirage pour la partie`);
 
         const party = await Party.findOne({ code });
         if (!party) {
-            logger.warn(`❌ Partie non trouvée : ${code}`);
+            logger.warn(`❌ Partie non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Partie non trouvée'
@@ -30,7 +30,7 @@ async function generateDrawPreview(req, res) {
 
         const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
         if (!isPinValid) {
-            logger.warn(`❌ Pin admin invalide pour la partie ${code}`);
+            logger.warn(`❌ Pin admin invalide pour la partie`);
             return res.status(403).json({
                 success: false,
                 message: 'Pin admin invalide'
@@ -38,7 +38,7 @@ async function generateDrawPreview(req, res) {
         }
 
         if (party.drawDone) {
-            logger.warn(`❌ Tirage déjà effectué pour la partie ${code}`);
+            logger.warn(`❌ Tirage déjà effectué pour la partie`);
             return res.status(400).json({
                 success: false,
                 message: 'Le tirage a déjà été effectué pour cette partie'
@@ -47,20 +47,20 @@ async function generateDrawPreview(req, res) {
 
         const participants = await Participant.find({ partyId: party._id });
         if (participants.length < 2) {
-            logger.warn(`❌ Pas assez de participants pour la partie ${code}`);
+            logger.warn(`❌ Pas assez de participants pour la partie`);
             return res.status(400).json({
                 success: false,
                 message: 'Pas assez de participants pour effectuer le tirage'
             });
         }
 
-        logger.info(`🎲 Génération d'un aperçu pour la party ${code} (${participants.length} participants)`);
+        logger.info(`🎲 Génération d'un aperçu pour la party (${participants.length} participants)`);
 
         const pairs = generatePairs(participants, party.preferCrossFamily);
         validatePairs(pairs);
         const preview = generatePreview(pairs);
 
-        logger.info(`✅ Aperçu du tirage généré pour la partie ${code}`);
+        logger.info(`✅ Aperçu du tirage généré pour la partie`);
 
         // ✅ Retourner seulement les stats
         return res.status(200).json({
@@ -76,11 +76,10 @@ async function generateDrawPreview(req, res) {
             }
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors de la génération de l'aperçu du tirage : ${error.message}`);
+        logger.error(`❌ Erreur lors de la génération de l'aperçu du tirage`);
         return res.status(500).json({
             success: false,
-            message: 'Erreur serveur lors de la génération de l\'aperçu du tirage',
-            error: error.message
+            message: 'Erreur serveur lors de la génération de l\'aperçu du tirage'
         });
     }
 }
@@ -95,11 +94,11 @@ async function sendDrawEmails(req, res) {
         const { code } = req.params;
         const { adminPin } = req.body;
 
-        logger.info(`🔔 Démarrage du tirage pour la partie ${code}`);
+        logger.info(`🔔 Démarrage du tirage pour la partie`);
 
         const party = await Party.findOne({ code });
         if (!party) {
-            logger.warn(`❌ Partie non trouvée : ${code}`);
+            logger.warn(`❌ Partie non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Partie non trouvée'
@@ -108,7 +107,7 @@ async function sendDrawEmails(req, res) {
 
         const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
         if (!isPinValid) {
-            logger.warn(`❌ Pin admin invalide pour la partie ${code}`);
+            logger.warn(`❌ Pin admin invalide pour la partie`);
             return res.status(403).json({
                 success: false,
                 message: 'Pin admin invalide'
@@ -116,7 +115,7 @@ async function sendDrawEmails(req, res) {
         }
 
         if (party.drawDone) {
-            logger.warn(`❌ Tirage déjà effectué pour la partie ${code}`);
+            logger.warn(`❌ Tirage déjà effectué pour la partie`);
             return res.status(400).json({
                 success: false,
                 message: 'Le tirage a déjà été effectué pour cette partie'
@@ -125,14 +124,14 @@ async function sendDrawEmails(req, res) {
 
         const participants = await Participant.find({ partyId: party._id });
         if (participants.length < 2) {
-            logger.warn(`❌ Pas assez de participants pour la partie ${code}`);
+            logger.warn(`❌ Pas assez de participants pour la partie`);
             return res.status(400).json({
                 success: false,
                 message: 'Pas assez de participants pour effectuer le tirage'
             });
         }
 
-        logger.info(`🎲 Génération des paires pour la party ${code} (${participants.length} participants)`);
+        logger.info(`🎲 Génération des paires pour la party (${participants.length} participants)`);
 
         // generer les paires
         const pairs = generatePairs(participants, party.preferCrossFamily);
@@ -155,7 +154,7 @@ async function sendDrawEmails(req, res) {
         party.drawDate = new Date();
         await party.save();
 
-        logger.info(`✅ Tirage effectué et emails envoyés pour la partie ${code}`);
+        logger.info(`✅ Tirage effectué et emails envoyés pour la partie`);
 
         return res.status(200).json({
             success: true,
@@ -175,11 +174,10 @@ async function sendDrawEmails(req, res) {
             }
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors du tirage ou de l'envoi des emails : ${error.message}`);
+        logger.error(`❌ Erreur lors du tirage ou de l'envoi des emails`);
         return res.status(500).json({
             success: false,
             message: 'Erreur serveur lors du tirage ou de l\'envoi des emails',
-            error: error.message
         });
     }
 }
@@ -193,12 +191,12 @@ async function getDrawStatus(req, res) {
     try {
         const { code } = req.params;
 
-        logger.info(`📊 Demande du statut du tirage pour la partie ${code}`);
+        logger.info(`📊 Demande du statut du tirage pour la partie`);
 
         // verifier que la partie existe
         const party = await Party.findOne({ code });
         if (!party) {
-            logger.warn(`❌ Partie non trouvée : ${code}`);
+            logger.warn(`❌ Partie non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Partie non trouvée'
@@ -218,11 +216,10 @@ async function getDrawStatus(req, res) {
             }
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors de la récupération du statut du tirage : ${error.message}`);
+        logger.error(`❌ Erreur lors de la récupération du statut du tirage`);
         return res.status(500).json({
             success: false,
-            message: 'Erreur serveur lors de la récupération du statut du tirage',
-            error: error.message
+            message: 'Erreur serveur lors de la récupération du statut du tirage'
         });
     }
 }

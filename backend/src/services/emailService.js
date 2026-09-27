@@ -10,45 +10,8 @@ const logger = require('../../logs/logger');
  */
 async function sendSecretSantaEmail(giver, receiver, party) {
 
-    // Mode Test : Log de l'email au lieu de l'envoyer
     if (process.env.TEST_MODE === 'true') {
-        logger.info(`✉️ [TEST MODE] Email simulé pour ${giver.name} (${giver.email})`);
-
-        const emailPreview = [
-            '\n' + '='.repeat(70),
-            '📧 TEST EMAIL PREVIEW',
-            '='.repeat(70),
-            `De      : Secret Santa 🎅 <${process.env.EMAIL || 'noreply@secretsanta.com'}>`,
-            `À       : ${giver.email}`,
-            `Sujet   : 🎄 Secret Santa ${party.name} - Ton cadeau surprise !`,
-            '─'.repeat(70),
-            `\nBonjour ${giver.name} ! 🎄\n`,
-            `🎁 Tu es le Secret Santa de : ${receiver.name.toUpperCase()}\n`
-        ];
-
-        if (receiver.wishList && receiver.wishList.length > 0) {
-            emailPreview.push(`Liste de souhaits de ${receiver.name} :`);
-            receiver.wishList.forEach((item, i) => {
-                emailPreview.push(`  ${i + 1}. ${item}`);
-            });
-            emailPreview.push('');
-        } else {
-            emailPreview.push(`${receiver.name} n'a pas encore indiqué de liste de souhaits.\n`);
-        }
-
-        if (party.budget) {
-            emailPreview.push(`💰 Budget suggéré : ${party.budget}€`);
-        }
-
-        if (party.date) {
-            emailPreview.push(`📅 Date de l'événement : ${new Date(party.date).toLocaleDateString('fr-FR')}`);
-        }
-
-        emailPreview.push('\n🤫 Garde le secret ! Ne révèle à personne qui tu as tiré.');
-        emailPreview.push('\nJoyeux Noël ! 🎄🎅');
-        emailPreview.push('='.repeat(70) + '\n');
-
-        logger.info(emailPreview.join('\n'));
+        logger.info('[TEST MODE] Email simulé');
 
         return {
             success: true,
@@ -191,7 +154,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        logger.info(`✅ Email envoyé avec succès à ${giver.email} (${giver.name}). Message ID: ${info.messageId}`);
+        logger.info(`✅ Email envoyé avec succès`);
 
         return {
             success: true,
@@ -200,7 +163,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
             giverId: giver._id
         };
     } catch (error) {
-        logger.error(`❌ Erreur lors de l'envoi de l'email à ${giver.email} : ${error.message}`);
+        logger.error(`❌ Erreur lors de l'envoi de l'email`);
         throw error;
     }
 }
@@ -219,8 +182,7 @@ async function sendAllEmails(pairs, party) {
         errors: []
     };
 
-    logger.info(`📧 Début de l'envoi de ${pairs.length} emails pour la party "${party.name}"...`);
-
+    logger.info(`Début de l'envoi de ${pairs.length} emails`);
     for (const pair of pairs) {
         try {
             await sendSecretSantaEmail(pair.giver, pair.receiver, party);
@@ -233,11 +195,9 @@ async function sendAllEmails(pairs, party) {
         } catch (error) {
             results.failed++;
             results.errors.push({
-                giver: pair.giver.name,
-                email: pair.giver.email,
-                error: error.message
+                error: 'Échec de l’envoi de l’email'
             });
-            logger.error(`❌ Échec d'envoi pour ${pair.giver.name} : ${error.message}`);
+            logger.error('❌ Échec d’envoi d’un email');
         }
     }
 

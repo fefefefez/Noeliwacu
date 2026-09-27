@@ -52,7 +52,7 @@ async function createParty(req, res) {
 
         await party.save();
 
-        logger.info(`✅ Party créée avec succès : ${code} - "${name}" - Familles: ${families.join(', ')}`);
+        logger.info(`✅ Party créée avec succès`);
 
         res.status(201).json({
             success: true,
@@ -66,7 +66,7 @@ async function createParty(req, res) {
             }
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors de la création de la party: ${error.message}`);
+        logger.error(`❌ Erreur lors de la création de la party`);
         res.status(500).json({
             success: false,
             message: 'Erreur lors de la création de la party.'
@@ -81,20 +81,20 @@ async function createParty(req, res) {
 async function getParty(req, res) {
     const { code } = req.params;
 
-    logger.info(`GET /api/parties/${code}`);
+    logger.info(`GET /api/parties`);
 
     try {
         const party = await Party.findOne({ code });
 
         if (!party) {
-            logger.warn(`❌ Party non trouvée : ${code}`);
+            logger.warn(`❌ Party non trouvée`);
             return res.status(404).json({
                 success: false,
                 message: 'Party non trouvée.'
             });
         }
 
-        logger.info(`✅ Party trouvée : ${code} - "${party.name}"`);
+        logger.info(`✅ Party trouvée`);
 
         res.json({
             success: true,
@@ -109,7 +109,7 @@ async function getParty(req, res) {
             }
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors de la récupération de la party ${code}: ${error.message}`);
+        logger.error(`❌ Erreur lors de la récupération de la party`);
         res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération de la party.'
