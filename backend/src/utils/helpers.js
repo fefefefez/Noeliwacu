@@ -1,27 +1,24 @@
-const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+
+const SALT_ROUNDS = 12;
 
 /**
- * Hash a PIN avec SHA-256
+ * Hash un PIN avec bcrypt
  * @param {string} pin - Le PIN à hasher
- * @returns {Promise<string>} - Le hash hexadécimal du PIN
+ * @returns {Promise<string>} - Le hash bcrypt du PIN
  */
 async function hashPin(pin) {
-    return crypto
-        .createHash('sha256')
-        .update(pin.toString())
-        .digest('hex');
+    return bcrypt.hash(pin.toString(), SALT_ROUNDS);
 }
 
 /**
- * vérifie si un PIN correspond à son hash
+ * Vérifie si un PIN correspond à son hash
  * @param {string} pin - Le PIN en clair
- * @param {string} hash - Le hash stocké
- * @returns {Promise<boolean>} - true si le PIN correspond au hash, false sinon
+ * @param {string} hash - Le hash bcrypt stocké
+ * @returns {Promise<boolean>}
  */
-
 async function verifiyPin(pin, hash) {
-    const hashedPin = await hashPin(pin);
-    return hashedPin === hash;
+    return bcrypt.compare(pin.toString(), hash);
 }
 
 /**
