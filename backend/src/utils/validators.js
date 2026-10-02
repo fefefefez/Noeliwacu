@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 /**
  * Valide le format d'un email
  */
@@ -33,7 +34,7 @@ function generatePartyCode() {
     let code = '';
 
     for (let i = 0; i < 6; i++) {
-        const randomIndex = Math.floor(Math.random() * chars.length);
+        const randomIndex = crypto.randomInt(0, chars.length);
         code += chars[randomIndex];
     }
 
