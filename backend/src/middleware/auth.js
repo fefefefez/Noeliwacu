@@ -10,7 +10,7 @@ async function verifyAdminPin(req, res, next) {
     const adminPin = req.headers['x-admin-pin']; // Le pin est envoyé dans les headers
 
     if (!adminPin) {
-        return res.json({
+        return res.status(401).json({
             success: false,
             message: 'PIN administrateur requis. Veuillez vous authentifier.'
         });
@@ -21,7 +21,7 @@ async function verifyAdminPin(req, res, next) {
         const party = await Party.findOne({ code });
 
         if (!party) {
-            return res.json({
+            return res.status(404).json({
                 success: false,
                 message: 'Party non trouvée.'
             });
@@ -32,7 +32,7 @@ async function verifyAdminPin(req, res, next) {
 
         if (!isPinValid) {
             logger.warn(`Tentative d'accès administratif non autorisée`);
-            return res.json({
+            return res.status(403).json({
                 success: false,
                 message: 'PIN administrateur incorrect.'
             });
@@ -46,7 +46,7 @@ async function verifyAdminPin(req, res, next) {
 
     } catch (error) {
         logger.error(`Erreur lors de la verification du PIN admin`);
-        res.json({
+        res.status(500).json({
             success: false,
             message: 'Erreur d\'authentification.'
         });

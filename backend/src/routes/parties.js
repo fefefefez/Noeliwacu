@@ -1,9 +1,11 @@
+const { adminPinLimiter } = require('../middleware/rateLimit');
 const express = require('express');
 const router = express.Router();
 const { createParty, getParty } = require('../controllers/partyController');
 const { verifiyPin } = require('../utils/helpers');
 const Party = require('../models/Party');
 const logger = require('../../logs/logger');
+
 
 
 // POST /api/parties - créer une nouvelle party
@@ -13,7 +15,7 @@ router.post('/', createParty);
 router.get('/:code', getParty);
 
 // POST /api/parties/:code/verify-pin - Vérifier le PIN administrateur
-router.post('/:code/verify-pin', async (req, res) => {
+router.post('/:code/verify-pin', adminPinLimiter, async (req, res) => {
     const { code } = req.params;
     const { adminPin } = req.body;
 
