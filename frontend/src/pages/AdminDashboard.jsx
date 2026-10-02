@@ -57,7 +57,7 @@ export default function AdminDashboard() {
             }
 
             // Charger les participants
-            const participantsData = await getParticipants(code);
+            const participantsData = await getParticipants(code, adminPin);
             if (participantsData.success) {
                 setParticipants(participantsData.participants);
             }
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [code]);
+    }, [code, adminPin]);
 
     // ✅ MODIFIÉ : Charger les données SEULEMENT si PIN déjà vérifié (venant de CreateParty)
     useEffect(() => {

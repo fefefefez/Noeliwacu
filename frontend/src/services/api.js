@@ -55,9 +55,12 @@ export const addParticipant = async (code, participantData) => {
     }
 };
 
-export const getParticipants = async (code) => {
+export const getParticipants = async (code, adminPin) => {
     try {
-        const response = await fetch(`${API_URL}/participants/party/${code}`);
+        const response = await fetch(`${API_URL}/participants/party/${code}`, {
+            method: 'GET',
+            headers: { 'X-Admin-Pin': adminPin }
+        });
         const data = await response.json();
 
         if (!response.ok) {
