@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 const logger = require('../../logs/logger');
-
+const { escapeHtml } = require('../utils/escapeHtml');
 /**
  * Service d'envoi d'emails via Nodemailer
  * @param {Object} giver - Le participant qui donne
@@ -31,20 +31,28 @@ async function sendSecretSantaEmail(giver, receiver, party) {
             }
         });
 
+        const safeGiverName = escapeHtml(giver.name);
+        const safeGiverEmail = escapeHtml(giver.email);
+        const safeReceiverName = escapeHtml(receiver.name);
+        const safeReceiverNameUpper = escapeHtml(receiver.name.toUpperCase());
+        const safePartyName = escapeHtml(party.name);
+
+        const safeWishlist = Array.isArray(receiver.wishList) ? receiver.wishList.map(item => escapeHtml(item)) : [];
+
         // Wishlist HTML
-        const wishlistHtml = receiver.wishList && receiver.wishList.length > 0
+        const wishlistHtml = safeWishlist.length > 0
             ? `
                 <div style="background-color: #f3e5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="color: #6a1b9a; margin: 0 0 15px 0;">🎁 Wishlist de ${receiver.name} :</h3>
+                    <h3 style="color: #6a1b9a; margin: 0 0 15px 0;">🎁 Wishlist de ${safeReceiverName} :</h3>
                     <ul style="line-height: 2; color: #333; margin: 0; padding-left: 25px;">
-                        ${receiver.wishList.map(item => `<li style="margin-bottom: 8px;">${item}</li>`).join('')}
+                        ${safeWishlist.map(item => `<li style="margin-bottom: 8px;">${item}</li>`).join('')}
                     </ul>
                 </div>
             `
             : `
                 <div style="background-color: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
                     <p style="color: #e65100; margin: 0; font-style: italic;">
-                        ℹ️ ${receiver.name} n'a pas encore indiqué de Wishlist.
+                        ℹ️ ${safeReceiverName} n'a pas encore indiqué de Wishlist.
                     </p>
                 </div>
             `;
@@ -65,7 +73,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                                 🎅 Secret Santa
                             </h1>
                             <h2 style="color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-size: 22px; font-weight: normal;">
-                                ${party.name}
+                                ${safePartyName}
                             </h2>
                         </div>
 
@@ -74,7 +82,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                             
                             <!-- Salutation -->
                             <p style="font-size: 18px; color: #333; margin: 0 0 25px 0;">
-                                Bonjour <strong>${giver.name}</strong> ! 🎄
+                                Bonjour <strong>${safeGiverName}</strong> ! 🎄
                             </p>
 
                             <!-- Révélation du Secret Santa -->
@@ -83,7 +91,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                                     🎁 Tu es le Secret Santa de :
                                 </p>
                                 <h2 style="color: white; margin: 0; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); letter-spacing: 1px;">
-                                    ${receiver.name.toUpperCase()}
+                                    ${safeReceiverNameUpper}
                                 </h2>
                             </div>
 
@@ -116,7 +124,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                             <!-- Message de clôture -->
                             <div style="margin-top: 35px; padding-top: 25px; border-top: 2px dashed #e0e0e0;">
                                 <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0; text-align: center;">
-                                    Amuse-toi bien à choisir un joli cadeau pour surprendre ${receiver.name} ! 🎅
+                                    Amuse-toi bien à choisir un joli cadeau pour surprendre ${safeReceiverName} ! 🎅
                                 </p>
                                 
                                 <!-- Alerte secret -->
@@ -138,7 +146,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                                 🎄 Joyeux Noël ! 🎄
                             </p>
                             <p style="color: #999; font-size: 12px; margin: 0; font-style: italic;">
-                                Cet email est destiné à <strong>${giver.name}</strong> (${giver.email})
+                                Cet email est destiné à <strong>${safeGiverName}</strong> (${safeGiverEmail})
                             </p>
                         </div>
 
