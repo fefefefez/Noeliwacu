@@ -3,6 +3,7 @@ const Participant = require('../models/Participant');
 const { generatePairs, validatePairs, generatePreview } = require('../services/drawService');
 const { sendAllEmails } = require('../services/emailService');
 const { verifiyPin } = require('../utils/helpers');
+const { isValidAdminPin } = require('../utils/validators');
 const logger = require('../../logs/logger');
 
 /**
@@ -15,7 +16,15 @@ const logger = require('../../logs/logger');
 async function generateDrawPreview(req, res) {
     try {
         const { code } = req.params;
-        const { adminPin } = req.body;
+        const { adminPin } = req.body || {};
+
+        if (!isValidAdminPin(adminPin)) {
+            logger.warn(`❌ Format de PIN administrateur invalide`);
+            return res.status(400).json({
+                success: false,
+                message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
+            });
+        }
 
         logger.info(`🔔 Génération de l'aperçu du tirage pour la partie`);
 
@@ -92,7 +101,7 @@ async function generateDrawPreview(req, res) {
 async function sendDrawEmails(req, res) {
     try {
         const { code } = req.params;
-        const { adminPin } = req.body;
+        const { adminPin } = req.body || {};
 
         logger.info(`🔔 Démarrage du tirage pour la partie`);
 
@@ -102,6 +111,14 @@ async function sendDrawEmails(req, res) {
             return res.status(404).json({
                 success: false,
                 message: 'Partie non trouvée'
+            });
+        }
+
+        if (!isValidAdminPin(adminPin)) {
+            logger.warn(`❌ Format de PIN administrateur invalide`);
+            return res.status(400).json({
+                success: false,
+                message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
             });
         }
 

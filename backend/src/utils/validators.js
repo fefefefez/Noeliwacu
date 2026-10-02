@@ -20,6 +20,12 @@ function isValidName(name) {
 }
 
 /**
+ * Valide le format d'un code PIN administrateur (4 chiffres)
+ */
+function isValidAdminPin(pin) {
+    return typeof pin === 'string' && /^\d{4}$/.test(pin);
+}
+/**
  * Génère un code unique pour une party
 */
 function generatePartyCode() {
@@ -38,5 +44,6 @@ function generatePartyCode() {
 module.exports = {
     isValidEmail,
     isValidName,
+    isValidAdminPin,
     generatePartyCode
 };

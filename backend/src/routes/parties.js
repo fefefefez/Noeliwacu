@@ -2,6 +2,7 @@ const { adminPinLimiter } = require('../middleware/rateLimit');
 const express = require('express');
 const router = express.Router();
 const { createParty, getParty } = require('../controllers/partyController');
+const { isValidAdminPin } = require('../utils/validators');
 const { verifiyPin } = require('../utils/helpers');
 const Party = require('../models/Party');
 const logger = require('../../logs/logger');
@@ -17,9 +18,17 @@ router.get('/:code', getParty);
 // POST /api/parties/:code/verify-pin - Vérifier le PIN administrateur
 router.post('/:code/verify-pin', adminPinLimiter, async (req, res) => {
     const { code } = req.params;
-    const { adminPin } = req.body;
+    const { adminPin } = req.body || {};
 
     logger.info('POST /api/parties/verify-pin');
+
+    if (!isValidAdminPin(adminPin)) {
+    logger.warn(`❌ Format de PIN administrateur invalide`);
+    return res.status(400).json({
+        success: false,
+        message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
+    });
+}
 
     try {
         const party = await Party.findOne({ code });

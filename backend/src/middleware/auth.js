@@ -1,5 +1,6 @@
 const Party = require('../models/Party');
 const { verifiyPin } = require('../utils/helpers');
+const { isValidAdminPin } = require('../utils/validators');
 const logger = require('../../logs/logger');
 
 /**
@@ -13,6 +14,14 @@ async function verifyAdminPin(req, res, next) {
         return res.status(401).json({
             success: false,
             message: 'PIN administrateur requis. Veuillez vous authentifier.'
+        });
+    }
+
+    if (!isValidAdminPin(adminPin)) {
+        logger.warn(`❌ Format de PIN administrateur invalide`);
+        return res.status(400).json({
+            success: false,
+            message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
         });
     }
 

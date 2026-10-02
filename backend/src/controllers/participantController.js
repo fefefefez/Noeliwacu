@@ -5,17 +5,26 @@ const logger = require('../../logs/logger');
 
 async function addParticipant(req, res) {
     const { code } = req.params;
-    let { name, email, familyGroup, wishList } = req.body;
+    let { name, email, familyGroup, wishList } = req.body || {};
 
     logger.info(`POST /api/participants - Tentative d'ajout de participant`);
+
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof familyGroup !== 'string') {
+        logger.warn(`❌ Validation échouée : Données manquantes ou invalides`);
+        return res.status(400).json({
+            success: false,
+            message: 'Nom, email et groupe familial sont obligatoires.'
+        });
+    }
 
     // Normalisation
     name = name.trim().toUpperCase();
     email = email.trim().toLowerCase();
+    familyGroup = familyGroup.trim();
 
     // Validation basique
     if (!name || !email || !familyGroup) {
-        logger.warn(`❌ Validation échouée : Données manquantes`);
+        logger.warn(`❌ Validation échouée : Données vides`);
         return res.status(400).json({
             success: false,
             message: 'Nom, email et groupe familial sont obligatoires.'
@@ -38,6 +47,29 @@ async function addParticipant(req, res) {
             success: false,
             message: 'L\'adresse email n\'est pas valide. Exemple : jean@exemple.com'
         });
+    }
+
+    let normalizedWishList = [];
+    if (wishList !== undefined && wishList !== null) {
+        if (!Array.isArray(wishList)) {
+            logger.warn(`❌ Validation échouée : Wishlist invalide`);
+            return res.status(400).json({
+                success: false,
+                message: 'Le wishlist doit être un tableau.'
+            });
+        }
+        if (wishList.some(item => typeof item !== 'string')) {
+            logger.warn(`❌ Validation échouée : Élément de wishlist invalide`);
+            return res.status(400).json({
+                success: false,
+                message: 'Chaque souhait doit être du texte.'
+            });
+        }
+
+        normalizedWishList = wishList
+            .map(item => item.trim())
+            .filter(Boolean)
+            .slice(0, 3);
     }
 
     try {
@@ -99,7 +131,7 @@ async function addParticipant(req, res) {
             name,
             email,
             familyGroup,
-            wishList: wishList ? wishList.filter(item => item.trim()).slice(0, 3) : []
+            wishList: normalizedWishList
         });
 
         await participant.save();

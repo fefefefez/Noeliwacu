@@ -1,5 +1,5 @@
 const Party = require('../models/Party');
-const { generatePartyCode } = require('../utils/validators');
+const { generatePartyCode, isValidAdminPin } = require('../utils/validators');
 const { hashPin } = require('../utils/helpers');
 const logger = require('../../logs/logger');
 
@@ -18,6 +18,14 @@ async function createParty(req, res) {
         return res.status(400).json({
             success: false,
             message: 'Nom et PIN administrateur sont obligatoires.'
+        });
+    }
+
+    if (!isValidAdminPin(adminPin)) {
+        logger.warn('❌ Validation échouée : Format de PIN invalide');
+        return res.status(400).json({
+            success: false,
+            message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
         });
     }
 
