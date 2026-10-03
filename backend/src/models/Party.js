@@ -34,6 +34,10 @@ const partySchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    drawDate: {
+        type: Date,
+        default: null
+    },
     pairsGenerated: [{
         giverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Participant' },
         receiverId: { type: mongoose.Schema.Types.ObjectId, ref: 'Participant' }

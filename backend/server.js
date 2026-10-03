@@ -39,14 +39,11 @@ app.get("/", (req, res) => {
             parties: {
                 createParty: 'POST /api/parties',
                 getParty: 'GET /api/parties/:code',
-                updateParty: 'PUT /api/parties/:code',
-                deleteParty: 'DELETE /api/parties/:code'
+                verifyAdminPin: 'POST /api/parties/:code/verify-pin'
             },
             participants: {
-                addParticipant: 'POST /api/participants/:code',
-                getParticipants: 'GET /api/participants/party/:code',
-                updateParticipant: 'PUT /api/participants/:id',
-                deleteParticipant: 'DELETE /api/participants/:id'
+                addParticipant: 'POST /api/participants/party/:code',
+                getParticipants: 'GET /api/participants/party/:code'
             },
             draw: {
                 preview: 'POST /api/parties/:code/draw/preview',
