@@ -45,7 +45,7 @@ Cloner le projet :
 
 ```bash
 git clone https://github.com/fefefefez/Noeliwacu.git
-cd Secret-santa
+cd Noeliwacu
 ```
 
 Installer le backend :
