@@ -44,7 +44,7 @@ Un compte Gmail avec un mot de passe d'application est nécessaire uniquement po
 Cloner le projet :
 
 ```bash
-git clone https://github.com/fefefefez/Secret-santa.git
+git clone https://github.com/fefefefez/Noeliwacu.git
 cd Secret-santa
 ```
 
