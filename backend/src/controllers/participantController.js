@@ -1,166 +1,162 @@
+const { randomUUID } = require('node:crypto');
+const { Types } = require('mongoose');
 const Participant = require('../models/Participant');
 const Party = require('../models/Party');
 const { isValidEmail, isValidName } = require('../utils/validators');
 const logger = require('../../logs/logger');
+const { withPartyTransaction, hasDrawState, PartyOperationError, TransactionResultUnknownError,
+    findCommitted } = require('../utils/partyTransaction');
 
-async function addParticipant(req, res) {
-    const { code } = req.params;
-    let { name, email, familyGroup, wishList } = req.body || {};
+function normalizeParticipant(body, partial = false) {
+    const { name, email, familyGroup, wishList } = body || {};
+    const values = {};
 
-    logger.info(`POST /api/participants - Tentative d'ajout de participant`);
-
-    if (typeof name !== 'string' || typeof email !== 'string' || typeof familyGroup !== 'string') {
-        logger.warn(`❌ Validation échouée : Données manquantes ou invalides`);
-        return res.status(400).json({
-            success: false,
-            message: 'Nom, email et groupe familial sont obligatoires.'
-        });
+    if (!partial || name !== undefined) {
+        if (typeof name !== 'string' || !name.trim()) {
+            throw new PartyOperationError(400, 'Le nom est obligatoire.');
+        }
+        values.name = name.trim().toUpperCase();
+        if (!isValidName(values.name)) {
+            throw new PartyOperationError(400, 'Le nom doit contenir uniquement des lettres, espaces, accents et traits d’union.');
+        }
     }
-
-    // Normalisation
-    name = name.trim().toUpperCase();
-    email = email.trim().toLowerCase();
-    familyGroup = familyGroup.trim();
-
-    // Validation basique
-    if (!name || !email || !familyGroup) {
-        logger.warn(`❌ Validation échouée : Données vides`);
-        return res.status(400).json({
-            success: false,
-            message: 'Nom, email et groupe familial sont obligatoires.'
-        });
+    if (!partial || email !== undefined) {
+        if (typeof email !== 'string' || !isValidEmail(email.trim())) {
+            throw new PartyOperationError(400, 'L’adresse email n’est pas valide.');
+        }
+        values.email = email.trim().toLowerCase();
     }
-
-    // ✅ VALIDATION NOM (Message spécifique et détaillé)
-    if (!isValidName(name)) {
-        logger.warn(`❌ Validation échouée : Format de nom invalide`);
-        return res.status(400).json({
-            success: false,
-            message: 'Le nom doit contenir uniquement des lettres, espaces, accents et traits d\'union.'
-        });
+    if (!partial || familyGroup !== undefined) {
+        if (typeof familyGroup !== 'string' || !familyGroup.trim()) {
+            throw new PartyOperationError(400, 'Le groupe familial est obligatoire.');
+        }
+        values.familyGroup = familyGroup.trim();
     }
-
-    // ✅ VALIDATION EMAIL (Message spécifique)
-    if (!isValidEmail(email)) {
-        logger.warn(`❌ Validation échouée : Format d'email invalide`);
-        return res.status(400).json({
-            success: false,
-            message: 'L\'adresse email n\'est pas valide. Exemple : jean@exemple.com'
-        });
+    if (!partial || wishList !== undefined) {
+        const wishes = wishList ?? [];
+        if (!Array.isArray(wishes) || wishes.some(item => typeof item !== 'string')) {
+            throw new PartyOperationError(400, 'La liste de souhaits doit être un tableau de textes.');
+        }
+        values.wishList = wishes.map(item => item.trim()).filter(Boolean).slice(0, 3);
     }
-
-    let normalizedWishList = [];
-    if (wishList !== undefined && wishList !== null) {
-        if (!Array.isArray(wishList)) {
-            logger.warn(`❌ Validation échouée : Wishlist invalide`);
-            return res.status(400).json({
-                success: false,
-                message: 'Le wishlist doit être un tableau.'
-            });
-        }
-        if (wishList.some(item => typeof item !== 'string')) {
-            logger.warn(`❌ Validation échouée : Élément de wishlist invalide`);
-            return res.status(400).json({
-                success: false,
-                message: 'Chaque souhait doit être du texte.'
-            });
-        }
-
-        normalizedWishList = wishList
-            .map(item => item.trim())
-            .filter(Boolean)
-            .slice(0, 3);
+    if (partial && !Object.keys(values).length) {
+        throw new PartyOperationError(400, 'Indiquez au moins un champ à modifier.');
     }
+    return values;
+}
 
-    try {
-        const party = await Party.findOne({ code });
-        if (!party) {
-            logger.warn(`❌ Party non trouvée`);
-            return res.status(404).json({
-                success: false,
-                message: 'Party non trouvée.'
-            });
-        }
-
-        if (party.drawDone) {
-            logger.warn(`❌ Tirage déjà effectué, ajout refusé`);
-            return res.status(403).json({
-                success: false,
-                message: 'Le tirage au sort a déjà été effectué. Impossible d\'ajouter de nouveaux participants.'
-            });
-        }
-
-        // Vérifier que le groupe familial existe dans la party
-        if (!party.families.includes(familyGroup)) {
-            logger.warn(`❌ Groupe familial invalide`);
-            return res.status(400).json({
-                success: false,
-                message: `La famille "${familyGroup}" n'existe pas dans cette fête. Veuillez choisir une famille dans la liste.`
-            });
-        }
-
-        // Vérifier la limite des participants (par ex. 100)
-        const MAX_PARTICIPANTS = 100;
-        const participantCount = await Participant.countDocuments({ partyId: party._id });
-
-        if (participantCount >= MAX_PARTICIPANTS) {
-            logger.warn(`❌ Limite de participants atteinte`);
-            return res.status(400).json({
-                success: false,
-                message: `Limite de participants atteinte (${MAX_PARTICIPANTS} maximum).`
-            });
-        }
-
-        // Vérifier les doublons (même nom et email dans la même party)
-        const existingParticipant = await Participant.findOne({
-            partyId: party._id,
-            name: name,
-            email: email
-        });
-
-        if (existingParticipant) {
-            logger.warn(`❌ Tentative d'ajout d'un participant deja existant`);
-            return res.status(409).json({
-                success: false,
-                message: `Une personne avec le nom "${name}" et l'email "${email}" est déjà inscrite à cette fête.`
-            });
-        }
-
-        const participant = new Participant({
-            partyId: party._id,
-            name,
-            email,
-            familyGroup,
-            wishList: normalizedWishList
-        });
-
-        await participant.save();
-        logger.info(`✅ Participant ajouté`);
-
-        res.status(201).json({
-            success: true,
-            message: 'Inscription réussie ! 🎉',
-            participant: {
-                name: participant.name,
-                email: participant.email,
-                familyGroup: participant.familyGroup
-            }
-        });
-    } catch (error) {
-        if (error.code === 11000) {
-            logger.warn(`❌ Erreur de clé dupliquée lors de l'ajout d'un participant`);
-            return res.status(409).json({
-                success: false,
-                message: `Une personne avec le nom "${name}" est déjà inscrite à cette fête.`
-            });
-        }
-        logger.error(`❌ Erreur lors de l'ajout d'un participant`);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur serveur lors de l\'inscription. Veuillez réessayer.'
-        });
+function assertOpen(party) {
+    if (hasDrawState(party)) {
+        throw new PartyOperationError(403, 'Le tirage a déjà été enregistré. Les inscriptions sont clôturées.', 'DRAW_ALREADY_EXISTS');
     }
 }
+
+function assertFamily(party, familyGroup) {
+    if (!party.families.includes(familyGroup)) throw new PartyOperationError(400, 'Choisissez une famille définie pour cette fête.');
+}
+
+async function assertUnique(partyId, name, email, session, exceptId) {
+    const filter = { partyId, name, email };
+    if (exceptId) filter._id = { $ne: exceptId };
+    if (await Participant.findOne(filter).session(session)) {
+        throw new PartyOperationError(409, 'Une inscription avec ce nom et cette adresse email existe déjà.');
+    }
+}
+
+function participantResponse(participant, admin) {
+    const { name, email, familyGroup } = participant;
+    if (!admin) return { name, email, familyGroup };
+    return { _id: participant._id, name, email, familyGroup, wishList: participant.wishList };
+}
+
+function mutationError(res, error, admin) {
+    if (error instanceof TransactionResultUnknownError) {
+        return res.status(error.status).json({ success: false, outcome: 'unknown', code: error.code,
+            operationId: error.operationId, verificationRequired: true, retryable: false,
+            message: 'Résultat de l’opération inconnu. Relisez les inscriptions avant toute nouvelle tentative.' });
+    }
+    if (error instanceof PartyOperationError) {
+        return res.status(error.status).json({ success: false, outcome: 'rejected', code: error.code, message: error.message });
+    }
+    if (error.code === 11000) {
+        return res.status(409).json({ success: false, outcome: 'rejected',
+            message: 'Une inscription avec ce nom et cette adresse email existe déjà.' });
+    }
+    if (admin && error.name === 'ValidationError') {
+        return res.status(400).json({ success: false, outcome: 'rejected',
+            message: 'Inscription invalide. Chaque souhait est limité à 100 caractères.' });
+    }
+    logger.error('Erreur lors de la mise à jour des inscriptions.');
+    return res.status(500).json({ success: false, outcome: 'rejected',
+        message: 'La modification des inscriptions n’a pas été enregistrée.' });
+}
+
+async function addParticipant(req, res) {
+    const admin = Boolean(req.party);
+    try {
+        const values = normalizeParticipant(req.body);
+        // Stable entre retries du driver et vérification, sans recherche par email.
+        const participantId = new Types.ObjectId();
+        const filter = admin ? { _id: req.party._id } : { code: req.params.code };
+        const participant = await withPartyTransaction(filter, async (party, session) => {
+            assertOpen(party);
+            assertFamily(party, values.familyGroup);
+            const count = await Participant.countDocuments({ partyId: party._id }).session(session);
+            if (count >= 100) throw new PartyOperationError(400, 'Limite de participants atteinte (100 maximum).');
+            await assertUnique(party._id, values.name, values.email, session);
+            const entry = new Participant({ _id: participantId, partyId: party._id, ...values });
+            await entry.save({ session });
+            return entry;
+        }, {
+            operationId: String(participantId),
+            verify: async candidate => Boolean(await findCommitted(Participant,
+                { _id: participantId, partyId: candidate.partyId }, '_id'))
+        });
+
+        return res.status(201).json({ success: true, outcome: 'confirmed', message: 'Inscription réussie ! 🎉',
+            participant: participantResponse(participant, admin) });
+    } catch (error) {
+        return mutationError(res, error, admin);
+    }
+}
+
+function mutateParticipant(remove) {
+    return async (req, res) => {
+        try {
+            const { participantId } = req.params;
+            if (!/^[a-f0-9]{24}$/i.test(participantId)) throw new PartyOperationError(400, 'Identifiant de participant invalide.');
+            const changes = remove ? null : normalizeParticipant(req.body, true);
+
+            const participant = await withPartyTransaction({ _id: req.party._id }, async (party, session) => {
+                assertOpen(party);
+                const filter = { _id: participantId, partyId: party._id };
+                const entry = await Participant.findOne(filter).session(session);
+                if (!entry) throw new PartyOperationError(404, 'Participant introuvable dans cette fête.');
+                if (remove) {
+                    await Participant.deleteOne(filter, { session });
+                    return entry;
+                }
+                entry.set(changes);
+                assertFamily(party, entry.familyGroup);
+                await assertUnique(party._id, entry.name, entry.email, session, entry._id);
+                await entry.save({ session });
+                return entry;
+            }, {
+                // Un document absent ou des valeurs identiques ne prouvent pas
+                // que cette opération précise a été validée.
+                operationId: randomUUID()
+            });
+
+            return res.json({ success: true, outcome: 'confirmed',
+                ...(remove ? { participantId: String(participant._id) } : { participant: participantResponse(participant, true) }) });
+        } catch (error) {
+            return mutationError(res, error, true);
+        }
+    };
+}
+
+const updateParticipant = mutateParticipant(false);
+const deleteParticipant = mutateParticipant(true);
 
 async function getParticipants(req, res) {
     const { code } = req.params;
@@ -201,5 +197,7 @@ async function getParticipants(req, res) {
 
 module.exports = {
     addParticipant,
+    updateParticipant,
+    deleteParticipant,
     getParticipants
 };

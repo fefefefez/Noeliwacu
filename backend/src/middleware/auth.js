@@ -27,7 +27,10 @@ async function verifyAdminPin(req, res, next) {
 
     try {
         // Trouver la party par son code
-        const party = await Party.findOne({ code });
+        const query = Party.findOne({ code });
+        if (req.notificationBudget) query.setOptions({ timeoutMS: 5000, maxTimeMS: 5000 });
+        const party = await query;
+        if (res.headersSent || res.destroyed || req.notificationBudget?.signal.aborted) return;
 
         if (!party) {
             return res.status(404).json({
@@ -38,6 +41,7 @@ async function verifyAdminPin(req, res, next) {
 
         // Vérifier le PIN
         const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
+        if (res.headersSent || res.destroyed || req.notificationBudget?.signal.aborted) return;
 
         if (!isPinValid) {
             logger.warn(`Tentative d'accès administratif non autorisée`);
@@ -54,6 +58,7 @@ async function verifyAdminPin(req, res, next) {
         next(); // passer au contrôleur suivant
 
     } catch (error) {
+        if (res.headersSent || res.destroyed) return;
         logger.error(`Erreur lors de la verification du PIN admin`);
         res.status(500).json({
             success: false,

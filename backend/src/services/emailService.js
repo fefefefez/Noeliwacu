@@ -1,36 +1,18 @@
 const nodemailer = require('nodemailer');
+const { randomUUID } = require('node:crypto');
 const logger = require('../../logs/logger');
 const { escapeHtml } = require('../utils/escapeHtml');
-/**
- * Service d'envoi d'emails via Nodemailer
- * @param {Object} giver - Le participant qui donne
- * @param {Object} receiver - Le participant qui reçoit
- * @param {Object} party - La party
- * @returns {Promise<Object>} - Résultat de l'envoi de l'email
- */
-async function sendSecretSantaEmail(giver, receiver, party) {
+// Pas de connexion ni lecture de credentials au chargement du module.
+function readConfig() {
+    if (process.env.TEST_MODE === 'true') return { testMode: true };
+    return { testMode: false, user: process.env.EMAIL, pass: process.env.APP_PASS };
+}
 
-    if (process.env.TEST_MODE === 'true') {
-        logger.info('[TEST MODE] Email simulé');
+const headerText = value => String(value ?? '').replace(/[\x00-\x1f\x7f\u2028\u2029]+/g, ' ').trim();
+const emailAddress = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const isSingleAddress = value => /^[^\s@<>,;:]+@[^\s@<>,;:]+\.[^\s@<>,;:]+$/.test(value);
 
-        return {
-            success: true,
-            testMode: true,
-            recipient: giver.email,
-            giverId: giver._id
-        };
-    }
-
-    // Mode Production : Envoi réel de l'email
-    try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL,
-                pass: process.env.APP_PASS
-            }
-        });
-
+function buildMessage(giver, receiver, party, sender) {
         const safeGiverName = escapeHtml(giver.name);
         const safeGiverEmail = escapeHtml(giver.email);
         const safeReceiverName = escapeHtml(receiver.name);
@@ -58,9 +40,10 @@ async function sendSecretSantaEmail(giver, receiver, party) {
             `;
 
         const mailOptions = {
-            from: `"Secret Santa 🎅" <${process.env.EMAIL}>`,
-            to: giver.email,
-            subject: `🎄 Secret Santa ${party.name} - Ton cadeau surprise !`,
+            from: { name: 'Secret Santa 🎅', address: sender },
+            to: { name: headerText(giver.name), address: emailAddress(giver.email) },
+            envelope: { from: sender, to: [emailAddress(giver.email)] },
+            subject: `🎄 Secret Santa ${headerText(party.name)} - ${headerText(giver.name)}, ton cadeau surprise !`,
             html: `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
                     
@@ -102,7 +85,7 @@ async function sendSecretSantaEmail(giver, receiver, party) {
                             ${party.budget ? `
                             <div style="background-color: #e8f5e9; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2e7d32;">
                                 <p style="margin: 0; color: #1b5e20; font-size: 16px;">
-                                    <strong>💰 Budget suggéré :</strong> ${party.budget}€
+                                    <strong>💰 Budget suggéré :</strong> ${escapeHtml(party.budget)}€
                                 </p>
                             </div>
                             ` : ''}
@@ -161,60 +144,160 @@ async function sendSecretSantaEmail(giver, receiver, party) {
             `
         };
 
-        const info = await transporter.sendMail(mailOptions);
-        logger.info(`✅ Email envoyé avec succès`);
+        return mailOptions;
+}
 
-        return {
-            success: true,
-            info,
-            recipient: giver.email,
-            giverId: giver._id
-        };
-    } catch (error) {
-        logger.error(`❌ Erreur lors de l'envoi de l'email`);
-        throw error;
+const safeCodes = new Set(['EAUTH', 'EENVELOPE', 'EMESSAGE', 'ETIMEDOUT', 'ECONNECTION', 'ESOCKET',
+    'ECONNRESET', 'ECONNREFUSED', 'EDNS', 'ENOTFOUND', 'EAI_AGAIN', 'ESTREAM', 'EPROTOCOL', 'ETLS',
+    'ECONFIG', 'EINPUT', 'ESHUTDOWN', 'ESMTPRESULT', 'EABORT']);
+const preTransmissionCodes = new Set(['EAUTH', 'EENVELOPE', 'EDNS', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+const temporaryCodes = new Set(['EDNS', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ESHUTDOWN',
+    'ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ECONNRESET']);
+
+function safeCommand(value) {
+    if (typeof value !== 'string') return undefined;
+    const upper = value.toUpperCase();
+    for (const command of ['AUTH', 'MAIL FROM', 'RCPT TO', 'EHLO', 'HELO', 'STARTTLS', 'DATA', 'CONN', 'API']) {
+        if (upper === command || upper.startsWith(`${command} `)) return command;
     }
+    return undefined;
+}
+
+function failureResult(error, transmissionInvoked) {
+    const code = safeCodes.has(error?.code) ? error.code : 'SMTP_ERROR';
+    const responseCode = Number.isInteger(error?.responseCode) && error.responseCode >= 400 &&
+        error.responseCode <= 599 ? error.responseCode : undefined;
+    // CONN n'est PAS une preuve d'echec avant DATA. EABORT apres invocation
+    // reste incertain : aucune supposition sur la progression interne du pool.
+    const status = !transmissionInvoked || responseCode || preTransmissionCodes.has(code) ? 'failed' : 'uncertain';
+    return {
+        status,
+        error: {
+            code,
+            message: status === 'failed' ? 'Échec confirmé de la tentative SMTP.' : 'Transmission SMTP non confirmée.',
+            command: safeCommand(error?.command),
+            responseCode,
+            retryable: status === 'failed' && (responseCode ? responseCode < 500 : temporaryCodes.has(code))
+        }
+    };
 }
 
 /**
- * Envoie de tous les emails du Secret Santa
- * @param {Array} pairs - Les paires de participants
- * @param {Object} party - La party
- * @returns {Promise<Object>} - Résultats de l'envoi
+ * Une instance = un pool paresseux et une configuration figee au premier appel.
+ * L'ordonnancement durable et l'idempotence entre appels appartiennent a MongoDB.
  */
-async function sendAllEmails(pairs, party) {
-    const results = {
-        total: pairs.length,
-        sent: 0,
-        failed: 0,
-        errors: []
-    };
+function createEmailService({ createTransport = options => nodemailer.createTransport(options),
+    getConfig = readConfig, log = logger, now = () => new Date() } = {}) {
+    let config;
+    let transport;
+    let closed = false;
 
-    logger.info(`Début de l'envoi de ${pairs.length} emails`);
-    for (const pair of pairs) {
-        try {
-            await sendSecretSantaEmail(pair.giver, pair.receiver, party);
-            results.sent++;
-
-            // ✅ Pause de 1000ms entre les envois (sauf en TEST_MODE)
-            if (process.env.TEST_MODE !== 'true') {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-        } catch (error) {
-            results.failed++;
-            results.errors.push({
-                error: 'Échec de l’envoi de l’email'
+    function getTransport() {
+        if (!transport) {
+            transport = createTransport({
+                service: 'gmail',
+                auth: { user: emailAddress(config.user), pass: config.pass },
+                pool: true,
+                maxConnections: 1,
+                maxMessages: 100,
+                maxRequeues: 0, // Aucun resend cache apres une coupure.
+                rateLimit: 1,
+                rateDelta: 1000,
+                dnsTimeout: 5000,
+                connectionTimeout: 10000,
+                greetingTimeout: 10000,
+                // Delais par phase ; AbortSignal borne la tentative complete.
+                socketTimeout: 15000,
+                logger: false,
+                debug: false,
+                transactionLog: false,
+                disableFileAccess: true,
+                disableUrlAccess: true
             });
-            logger.error('❌ Échec d’envoi d’un email');
         }
+        return transport;
     }
 
-    logger.info(`✅ Envoi terminé : ${results.sent}/${results.total} emails envoyés avec succès, ${results.failed} échec(s).`);
+    async function sendSecretSantaEmail(giver, receiver, party, options = {}) {
+        const requestedAttemptId = options?.attemptId;
+        const validAttemptId = typeof requestedAttemptId === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(requestedAttemptId);
+        const attemptId = validAttemptId ? requestedAttemptId : randomUUID();
+        const messageId = `<${attemptId}@noeliwacu.invalid>`;
+        const metadata = { participantId: giver?._id == null ? undefined : String(giver._id),
+            attemptId, messageId, startedAt: now() };
+        let transmissionInvoked = false;
+        let result;
+        try {
+            if (options.signal?.aborted) throw Object.assign(new Error(), { code: 'EABORT' });
+            if (closed) throw Object.assign(new Error(), { code: 'ESHUTDOWN' });
+            if ((requestedAttemptId !== undefined && !validAttemptId) || !metadata.participantId ||
+                typeof giver?.name !== 'string' || !giver.name.trim() || !isSingleAddress(emailAddress(giver?.email)) ||
+                typeof receiver?.name !== 'string' || !receiver.name.trim() || typeof party?.name !== 'string') {
+                throw Object.assign(new Error(), { code: 'EINPUT' });
+            }
+            config ??= getConfig();
+            if (config.testMode) {
+                result = { status: 'simulated' };
+            } else {
+                if (!isSingleAddress(emailAddress(config.user)) || typeof config.pass !== 'string' || !config.pass) {
+                    throw Object.assign(new Error(), { code: 'ECONFIG' });
+                }
+                const mail = { ...buildMessage(giver, receiver, party, emailAddress(config.user)), messageId,
+                    signal: options.signal };
+                const sender = getTransport();
+                transmissionInvoked = true;
+                const info = await sender.sendMail(mail);
+                const target = mail.envelope.to[0];
+                const accepted = Array.isArray(info?.accepted) ? info.accepted.map(emailAddress) : [];
+                const rejected = Array.isArray(info?.rejected) ? info.rejected.map(emailAddress) : [];
+                const pending = Array.isArray(info?.pending) ? info.pending.map(emailAddress) : [];
+                if (accepted.length === 1 && accepted[0] === target && !rejected.includes(target) && !pending.includes(target)) {
+                    result = { status: 'accepted' };
+                } else if (rejected.includes(target) && !accepted.includes(target)) {
+                    result = failureResult({ code: 'EENVELOPE', command: 'RCPT TO',
+                        responseCode: info?.rejectedErrors?.[0]?.responseCode }, true);
+                } else {
+                    result = failureResult({ code: 'ESMTPRESULT' }, true);
+                }
+            }
+        } catch (error) {
+            result = failureResult(error, transmissionInvoked);
+        }
+        const completedAt = now();
+        // Jamais de log d'objet SMTP, d'erreur brute, d'adresse ou d'attribution.
+        log.info(`Notification email : ${result.status}.`);
+        return { ...metadata, ...result, success: result.status === 'accepted', completedAt,
+            ...(result.status === 'accepted' ? { acceptedAt: completedAt } : {}) };
+    }
 
-    return results;
+    async function sendAllEmails(pairs, party) {
+        if (!Array.isArray(pairs)) throw new TypeError('Le lot doit être un tableau.');
+        const participantIds = pairs.map(pair => pair?.giver?._id == null ? null : String(pair.giver._id));
+        if (participantIds.includes(null) || new Set(participantIds).size !== pairs.length) {
+            throw new TypeError('Chaque participant doit apparaître une seule fois dans le lot.');
+        }
+        const results = { total: pairs.length, accepted: 0, failed: 0, uncertain: 0, simulated: 0, sent: 0, attempts: [] };
+        for (const pair of pairs) {
+            const attempt = await sendSecretSantaEmail(pair.giver, pair.receiver, party);
+            results.attempts.push(attempt);
+            results[attempt.status]++;
+        }
+        results.sent = results.accepted; // Compatibilite : seulement les acceptations SMTP reelles.
+        return results;
+    }
+
+    function close() {
+        closed = true;
+        transport?.close(); // Les envois actifs finissent ; ceci n'est pas une annulation.
+    }
+
+    return { sendSecretSantaEmail, sendAllEmails, close };
 }
 
+const defaultService = createEmailService();
 module.exports = {
-    sendSecretSantaEmail,
-    sendAllEmails
+    createEmailService,
+    sendSecretSantaEmail: defaultService.sendSecretSantaEmail,
+    sendAllEmails: defaultService.sendAllEmails,
+    closeEmailTransport: defaultService.close
 };

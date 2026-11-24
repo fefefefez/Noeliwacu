@@ -1,10 +1,12 @@
+const { randomUUID } = require('node:crypto');
 const Party = require('../models/Party');
 const Participant = require('../models/Participant');
 const { generatePairs, validatePairs, generatePreview } = require('../services/drawService');
-const { sendAllEmails } = require('../services/emailService');
 const { verifiyPin } = require('../utils/helpers');
 const { isValidAdminPin } = require('../utils/validators');
 const logger = require('../../logs/logger');
+const { withPartyTransaction, hasDrawState, PartyOperationError, TransactionResultUnknownError,
+    findCommitted } = require('../utils/partyTransaction');
 
 /**
  * Genere un aperçu du tirage sans envoyer les emails
@@ -46,7 +48,7 @@ async function generateDrawPreview(req, res) {
             });
         }
 
-        if (party.drawDone) {
+        if (hasDrawState(party)) {
             logger.warn(`❌ Tirage déjà effectué pour la partie`);
             return res.status(400).json({
                 success: false,
@@ -94,109 +96,119 @@ async function generateDrawPreview(req, res) {
 }
 
 /**
-* Effectue le tirage et envoie les emails
-* POST /api/parties/:code/draw/send
-* Body: { adminPin: "1234" }
-*/
-async function sendDrawEmails(req, res) {
+ * POST /api/parties/:code/draw/prepare
+ * Admin authentifie par le middleware existant (header X-Admin-Pin).
+ * Aucun envoi : une seule ecriture conditionnelle fixe le tirage officiel.
+ */
+async function prepareDraw(req, res) {
     try {
-        const { code } = req.params;
-        const { adminPin } = req.body || {};
-
-        logger.info(`🔔 Démarrage du tirage pour la partie`);
-
-        const party = await Party.findOne({ code });
-        if (!party) {
-            logger.warn(`❌ Partie non trouvée`);
-            return res.status(404).json({
-                success: false,
-                message: 'Partie non trouvée'
-            });
-        }
-
-        if (!isValidAdminPin(adminPin)) {
-            logger.warn(`❌ Format de PIN administrateur invalide`);
-            return res.status(400).json({
-                success: false,
-                message: 'Le PIN administrateur doit contenir exactement 4 chiffres.'
-            });
-        }
-
-        const isPinValid = await verifiyPin(adminPin, party.adminPinHash);
-        if (!isPinValid) {
-            logger.warn(`❌ Pin admin invalide pour la partie`);
-            return res.status(403).json({
-                success: false,
-                message: 'Pin admin invalide'
-            });
-        }
-
-        if (party.drawDone) {
-            logger.warn(`❌ Tirage déjà effectué pour la partie`);
-            return res.status(400).json({
-                success: false,
-                message: 'Le tirage a déjà été effectué pour cette partie'
-            });
-        }
-
-        const participants = await Participant.find({ partyId: party._id });
-        if (participants.length < 2) {
-            logger.warn(`❌ Pas assez de participants pour la partie`);
-            return res.status(400).json({
-                success: false,
-                message: 'Pas assez de participants pour effectuer le tirage'
-            });
-        }
-
-        logger.info(`🎲 Génération des paires pour la party (${participants.length} participants)`);
-
-        // generer les paires
-        const pairs = generatePairs(participants, party.preferCrossFamily);
-        validatePairs(pairs);
-
-        // ✅ SAUVEGARDER les paires dans la DB
-        party.pairsGenerated = pairs.map(pair => ({
-            giverId: pair.giver._id,
-            receiverId: pair.receiver._id
-        }));
-
-        const stats = generatePreview(pairs);
-        logger.info(`📧 Envoi des emails...`);
-
-        // envoyer les emails
-        const emailResults = await sendAllEmails(pairs, party);
-
-        // marquer le tirage comme fait
-        party.drawDone = true;
-        party.drawDate = new Date();
-        await party.save();
-
-        logger.info(`✅ Tirage effectué et emails envoyés pour la partie`);
-
-        return res.status(200).json({
-            success: true,
-            message: 'Tirage effectué et emails envoyés avec succès',
-            emailsSent: emailResults.sent,  // ✅ Simplifié pour AdminDashboard
-            results: {
-                totalParticipants: participants.length,
-                emailsSent: emailResults.sent,
-                emailsFailed: emailResults.failed,
-                errors: emailResults.errors,
-                stats: {
-                    quality: stats.quality,
-                    crossFamily: stats.crossFamily,
-                    intraFamily: stats.intraFamily,
-                    percentage: stats.percentage
-                }
+        const drawId = randomUUID();
+        const drawDate = new Date();
+        // Le document du middleware sert a identifier la fete, pas de snapshot
+        // pour le tirage. Relire sous verrou transactionnel avant les participants.
+        const prepared = await withPartyTransaction({ _id: req.party._id }, async (party, session) => {
+            if (hasDrawState(party)) {
+                throw new PartyOperationError(409,
+                    'Un tirage existe déjà pour cette fête. Il ne sera pas remplacé.', 'DRAW_ALREADY_EXISTS');
             }
+
+            const participants = await Participant.find({ partyId: party._id })
+                .select('_id name email familyGroup').session(session);
+            if (participants.length < 2) {
+                throw new PartyOperationError(400, 'Pas assez de participants pour effectuer le tirage');
+            }
+
+            const pairs = generatePairs(participants, party.preferCrossFamily);
+            validatePairs(pairs);
+
+            // validatePairs assure unicite et absence d'auto-attribution. On verifie
+            // aussi la couverture exacte de la liste chargee, sans identifiant etranger.
+            const participantIds = new Set(participants.map(participant => String(participant._id)));
+            if (participantIds.size !== participants.length || pairs.length !== participants.length ||
+                !pairs.every(pair => participantIds.has(String(pair.giver._id)) &&
+                    participantIds.has(String(pair.receiver._id)))) {
+                throw new Error('Le tirage ne couvre pas exactement les participants inclus.');
+            }
+
+            // Ne pas utiliser document.save() : deux requetes peuvent avoir lu le
+            // meme etat initial. MongoDB doit verifier les gardes au moment d'ecrire.
+            // Les tableaux null/malformes sont refuses par precaution.
+            const savedDraw = await Party.findOneAndUpdate({
+                _id: party._id,
+                drawDone: { $ne: true },
+                drawDate: null,
+                drawId: null,
+                $and: ['pairsGenerated', 'drawParticipantIds', 'notifications'].map(field => ({
+                    $or: [{ [field]: { $exists: false } }, { [field]: { $size: 0 } }]
+                }))
+            }, {
+                $set: {
+                    drawId,
+                    drawDate,
+                    drawDone: true,
+                    drawParticipantIds: participants.map(participant => participant._id),
+                    pairsGenerated: pairs.map(pair => ({ giverId: pair.giver._id, receiverId: pair.receiver._id })),
+                    notifications: participants.map(participant => ({
+                        participantId: participant._id,
+                        recipientEmail: participant.email,
+                        status: 'pending'
+                    }))
+                }
+            }, {
+                session,
+                new: true,
+                upsert: false,
+                runValidators: true,
+                projection: { _id: 0, drawId: 1, drawDate: 1 },
+                maxTimeMS: 10000
+            });
+
+            if (!savedDraw) {
+                throw new PartyOperationError(409,
+                    'La fête ne permet plus la création du tirage. Actualisez son statut.', 'DRAW_ALREADY_EXISTS');
+            }
+
+            return { drawId: savedDraw.drawId, drawDate: savedDraw.drawDate, participantCount: participants.length };
+        }, {
+            operationId: drawId,
+            verify: async () => Boolean(await findCommitted(Party,
+                { _id: req.party._id, drawId, drawDone: true }, '_id'))
+        });
+
+        logger.info('Tirage officiel sauvegardé sans envoi d\'email.');
+        return res.status(201).json({
+            success: true,
+            outcome: 'confirmed',
+            message: 'Tirage sauvegardé. Aucun email n\'a été envoyé.',
+            draw: prepared
         });
     } catch (error) {
-        logger.error(`❌ Erreur lors du tirage ou de l'envoi des emails`);
+        if (error instanceof TransactionResultUnknownError) {
+            return res.status(error.status).json({ success: false, outcome: 'unknown', code: error.code,
+                operationId: error.operationId, verificationRequired: true, retryable: false, message: error.message });
+        }
+        if (error instanceof PartyOperationError) {
+            return res.status(error.status).json({ success: false, outcome: 'rejected', code: error.code, message: error.message });
+        }
+        // Un timeout reseau peut masquer une ecriture deja confirmee par MongoDB.
+        // Ne jamais annuler/reinitialiser le tirage ni lancer d'envoi ici.
+        logger.error('Erreur lors de la préparation du tirage.');
         return res.status(500).json({
             success: false,
-            message: 'Erreur serveur lors du tirage ou de l\'envoi des emails',
+            outcome: 'rejected',
+            code: 'DRAW_PREPARATION_FAILED',
+            message: 'La préparation du tirage a été refusée. Aucun nouveau tirage n\'a été enregistré.'
         });
     }
+}
+
+// V2.1 en cours : supprimer tout chemin vers l'ancien flux tirage + SMTP.
+function sendDrawEmails(req, res) {
+    return res.status(410).json({
+        success: false,
+        code: 'DRAW_SEND_DISABLED',
+        message: 'L\'ancien envoi est désactivé. Utilisez la préparation du tirage ; aucun email ne sera envoyé.'
+    });
 }
 
 /**
@@ -222,6 +234,7 @@ async function getDrawStatus(req, res) {
 
         // compter les participants
         const participantCount = await Participant.countDocuments({ partyId: party._id });
+        const drawLocked = hasDrawState(party);
 
         res.status(200).json({
             success: true,
@@ -229,7 +242,8 @@ async function getDrawStatus(req, res) {
                 drawDone: party.drawDone,
                 drawDate: party.drawDate,
                 participantCount,
-                canDraw: participantCount >= 2 && !party.drawDone
+                drawLocked,
+                canDraw: participantCount >= 2 && !drawLocked
             }
         });
     } catch (error) {
@@ -242,6 +256,7 @@ async function getDrawStatus(req, res) {
 }
 
 module.exports = {
+    prepareDraw,
     generateDrawPreview,
     sendDrawEmails,
     getDrawStatus

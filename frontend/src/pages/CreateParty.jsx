@@ -62,10 +62,7 @@ export default function CreateParty() {
                     return;
                 }
 
-                // ✅ Navigation avec le code
-                navigate(`/admin/${partyCode}`, {
-                    state: { adminPin: formData.adminPin }
-                });
+                navigate(`/admin/${partyCode}`);
             } else {
                 setError(data.message);
             }

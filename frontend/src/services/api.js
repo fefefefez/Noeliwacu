@@ -94,25 +94,54 @@ export const generateDrawPreview = async (code, adminPin) => {
     }
 };
 
-export const sendDraw = async (code, adminPin) => {
+// Les erreurs administratives conservent le statut et l'outcome pour que le
+// dashboard distingue un refus d'une confirmation perdue. Aucun retry ici.
+async function adminRequest(path, adminPin, method, { timeoutMs = 20000, body } = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const response = await fetch(`${API_URL}/parties/${code}/draw/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminPin })
+        const response = await fetch(`${API_URL}${path}`, {
+            method,
+            headers: { 'X-Admin-Pin': adminPin, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+            body: body === undefined ? undefined : JSON.stringify(body),
+            signal: controller.signal,
+            cache: 'no-store'
         });
-
         const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+        if (!response.ok || data.success !== true) {
+            const error = new Error('La requête administrative n’a pas été confirmée.');
+            error.status = response.status;
+            error.code = data.code;
+            error.outcome = data.outcome;
+            error.verificationRequired = data.verificationRequired === true;
+            error.detail = data.message;
+            throw error;
         }
-
         return data;
-    } catch (error) {
-        throw new Error(error.message || 'Erreur de connexion au serveur');
+    } finally {
+        clearTimeout(timeout);
     }
-};
+}
+
+function notificationRequest(code, adminPin, action, method, timeoutMs) {
+    return adminRequest(`/parties/${encodeURIComponent(code)}/draw/${action}`, adminPin, method, { timeoutMs });
+}
+
+function participantMutation(code, adminPin, method, participantId, body) {
+    const target = participantId === undefined ? '' : `/${encodeURIComponent(participantId)}`;
+    return adminRequest(`/participants/party/${encodeURIComponent(code)}/admin${target}`, adminPin, method, { body });
+}
+
+export const addAdminParticipant = (code, pin, body) => participantMutation(code, pin, 'POST', undefined, body);
+export const updateAdminParticipant = (code, pin, id, body) => participantMutation(code, pin, 'PATCH', id, body);
+export const deleteAdminParticipant = (code, pin, id) => participantMutation(code, pin, 'DELETE', id);
+
+export const prepareDraw = (code, adminPin) => notificationRequest(code, adminPin, 'prepare', 'POST');
+export const getNotifications = (code, adminPin) => notificationRequest(code, adminPin, 'notifications', 'GET');
+// Ne pas couper a 20 s une route dont le budget serveur est de 24 s.
+// La suspension de la sequence n'annule jamais cette requete.
+export const sendNotification = (code, adminPin, participantId) => notificationRequest(code, adminPin,
+    `notifications/${encodeURIComponent(participantId)}/send`, 'POST', 35000);
 
 export const getDrawStatus = async (code) => {
     try {

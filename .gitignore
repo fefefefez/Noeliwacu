@@ -1,0 +1,4 @@
+# Local configuration at the repository root and in application directories
+.env
+.env.*
+!.env.example
