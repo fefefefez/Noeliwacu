@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { addParticipant, getParty } from "../services/api";
 import Alert from "../components/Alert";
 
-const MAX_WISH_LENGTH = 100;
+import { MAX_WISH_LENGTH, WISH_LENGTH_ERROR } from '../utils/helpers';
 
 export default function JoinParty() {
     const navigate = useNavigate();
@@ -78,7 +78,7 @@ export default function JoinParty() {
 
         const wishList = formData.wishList.map(wish => wish.trim()).filter(Boolean);
         if (wishList.some(wish => wish.length > MAX_WISH_LENGTH)) {
-            setError(`Chaque souhait est limité à ${MAX_WISH_LENGTH} caractères. Raccourcissez-le ou laissez le champ vide.`);
+            setError(WISH_LENGTH_ERROR);
             return;
         }
         submitting.current = true;
@@ -213,14 +213,13 @@ export default function JoinParty() {
                             <div style={{ marginTop: '20px' }}>
                                 <label>Wishlist (optionnel - max 3 articles)</label>
                                 <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', display: 'block', marginBottom: '10px' }}>
-                                    {MAX_WISH_LENGTH} caractères maximum par souhait.
+                                    Tu peux coller un lien de produit. {MAX_WISH_LENGTH} caractères maximum par souhait.
                                 </small>
                                 {formData.wishList.map((wish, index) => (
                                     <input
                                         key={index}
                                         type="text"
                                         placeholder={`Idée cadeau ${index + 1}`}
-                                        maxLength={MAX_WISH_LENGTH}
                                         value={wish}
                                         onChange={(e) => handleWishListChange(index, e.target.value)}
                                     />

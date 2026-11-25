@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const MAX_WISH_LENGTH = 1000;
 /**
  * Valide le format d'un email
  */
@@ -43,6 +44,7 @@ function generatePartyCode() {
 
 
 module.exports = {
+    MAX_WISH_LENGTH,
     isValidEmail,
     isValidName,
     isValidAdminPin,

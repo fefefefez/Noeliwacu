@@ -346,13 +346,13 @@ test('erreur apres vraie insertion : transaction annulee, participant et version
 test('souhait trop long : refus clair sans écriture puis inscription à la limite', async () => {
     const initial = await seed();
     const before = await Party.findById(initial._id).lean();
-    const rejected = await register('INVALIDE', { wishList: ['x'.repeat(101)] });
+    const rejected = await register('INVALIDE', { wishList: ['x'.repeat(1001)] });
     assert.equal(rejected.status, 400);
     assert.equal(rejected.body.code, 'WISH_TOO_LONG');
-    assert.match(rejected.body.message, /100 caractères/);
+    assert.match(rejected.body.message, /1000 caractères/);
     assert.equal(await Participant.countDocuments(), 2);
     assert.deepEqual(await Party.findById(initial._id).lean(), before);
-    const wish = 'x'.repeat(100);
+    const wish = 'https://shop.example.invalid/produit?reference='.padEnd(1000, 'x');
     assert.equal((await register('VALIDE', { wishList: [wish] })).status, 201);
     assert.deepEqual((await Participant.findOne({ name: 'VALIDE' })).wishList, [wish]);
     assert.equal(await Participant.countDocuments(), 3);
@@ -582,7 +582,7 @@ test('CRUD admin : familles, identifiants, souhaits et limite valides uniquement
     assert.equal((await adminAdd({ ...adminEntry, name: 'Bob' })).status, 400);
     assert.equal((await adminEdit('invalid', { name: 'Bob' })).status, 400);
     for (const body of [{ name: '123' }, { email: 'invalide' }, { familyGroup: 'X' }, { wishList: [1] },
-        { wishList: ['x'.repeat(101)] }, { partyId: id }]) {
+        { wishList: ['x'.repeat(1001)] }, { partyId: id }]) {
         assert.equal((await adminEdit(id, body)).status, 400);
     }
     assert.equal((await Participant.findById(id)).name, 'ALICE');

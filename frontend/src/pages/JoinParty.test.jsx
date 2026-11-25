@@ -21,21 +21,22 @@ test('un souhait trop long ne quitte pas le formulaire et peut être corrigé', 
     addParticipant.mockResolvedValue({ success: true });
     openRegistration();
     const wish = await screen.findByPlaceholderText('Idée cadeau 1');
-    expect(wish).toHaveAttribute('maxlength', '100');
+    expect(screen.getByText(/1000 caractères maximum par souhait/)).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('ex: Jean Bagabo'), { target: { value: 'Alice' } });
     fireEvent.change(screen.getByPlaceholderText('ex: jean@exemple.com'), { target: { value: 'alice@example.invalid' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'A' } });
-    fireEvent.change(wish, { target: { value: 'x'.repeat(101) } });
+    fireEvent.change(wish, { target: { value: 'x'.repeat(1001) } });
     fireEvent.submit(wish.form);
     expect(screen.getByText(/Raccourcissez-le ou laissez le champ vide/)).toBeInTheDocument();
     expect(addParticipant).not.toHaveBeenCalled();
-    expect(wish).toHaveValue('x'.repeat(101));
+    expect(wish).toHaveValue('x'.repeat(1001));
 
-    fireEvent.change(wish, { target: { value: 'x'.repeat(100) } });
+    const link = 'https://shop.example.invalid/produit?reference='.padEnd(1000, 'x');
+    fireEvent.change(wish, { target: { value: link } });
     fireEvent.submit(wish.form);
     expect(await screen.findByText(/Vous avez rejoint la fête/)).toBeInTheDocument();
     expect(addParticipant).toHaveBeenCalledTimes(1);
-    expect(addParticipant).toHaveBeenCalledWith('TEST21', expect.objectContaining({ wishList: ['x'.repeat(100)] }));
+    expect(addParticipant).toHaveBeenCalledWith('TEST21', expect.objectContaining({ wishList: [link] }));
 });
 
 test('une réponse tardive ne réaffiche pas le formulaire de l’ancien code', async () => {

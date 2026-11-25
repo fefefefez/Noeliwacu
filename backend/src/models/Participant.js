@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { MAX_WISH_LENGTH } = require('../utils/validators');
 
 const participantSchema = new mongoose.Schema({
     partyId: {
@@ -22,7 +23,7 @@ const participantSchema = new mongoose.Schema({
     },
     wishList: [{
         type: String,
-        maxlength: 100 // Chaque souhait ne doit pas dépasser 100 caractères
+        maxlength: MAX_WISH_LENGTH
     }],
     createdAt: {
         type: Date,

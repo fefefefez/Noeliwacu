@@ -2,7 +2,7 @@ const { randomUUID } = require('node:crypto');
 const { Types } = require('mongoose');
 const Participant = require('../models/Participant');
 const Party = require('../models/Party');
-const { isValidEmail, isValidName } = require('../utils/validators');
+const { isValidEmail, isValidName, MAX_WISH_LENGTH } = require('../utils/validators');
 const logger = require('../../logs/logger');
 const { withPartyTransaction, hasDrawState, PartyOperationError, TransactionResultUnknownError,
     findCommitted } = require('../utils/partyTransaction');
@@ -38,8 +38,8 @@ function normalizeParticipant(body, partial = false) {
             throw new PartyOperationError(400, 'La liste de souhaits doit être un tableau de textes.');
         }
         values.wishList = wishes.map(item => item.trim()).filter(Boolean).slice(0, 3);
-        if (values.wishList.some(wish => wish.length > 100)) {
-            throw new PartyOperationError(400, 'Chaque souhait est limité à 100 caractères. Raccourcissez-le ou laissez le champ vide.', 'WISH_TOO_LONG');
+        if (values.wishList.some(wish => wish.length > MAX_WISH_LENGTH)) {
+            throw new PartyOperationError(400, `Chaque souhait est limité à ${MAX_WISH_LENGTH} caractères. Raccourcissez-le ou laissez le champ vide.`, 'WISH_TOO_LONG');
         }
     }
     if (partial && !Object.keys(values).length) {
@@ -87,7 +87,7 @@ function mutationError(res, error, admin) {
     }
     if (admin && error.name === 'ValidationError') {
         return res.status(400).json({ success: false, outcome: 'rejected',
-            message: 'Inscription invalide. Chaque souhait est limité à 100 caractères.' });
+            message: `Inscription invalide. Chaque souhait est limité à ${MAX_WISH_LENGTH} caractères.` });
     }
     logger.error('Erreur lors de la mise à jour des inscriptions.');
     return res.status(500).json({ success: false, outcome: 'rejected',
