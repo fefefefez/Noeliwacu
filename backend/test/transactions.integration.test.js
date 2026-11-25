@@ -343,13 +343,18 @@ test('erreur apres vraie insertion : transaction annulee, participant et version
     assert.ok(wire.some(event => event.name === 'abortTransaction'));
 });
 
-test('erreur de validation dans le vrai controller : rollback puis inscription valide possible', async () => {
+test('souhait trop long : refus clair sans écriture puis inscription à la limite', async () => {
     const initial = await seed();
     const before = await Party.findById(initial._id).lean();
-    assert.equal((await register('INVALIDE', { wishList: ['x'.repeat(101)] })).status, 500);
+    const rejected = await register('INVALIDE', { wishList: ['x'.repeat(101)] });
+    assert.equal(rejected.status, 400);
+    assert.equal(rejected.body.code, 'WISH_TOO_LONG');
+    assert.match(rejected.body.message, /100 caractères/);
     assert.equal(await Participant.countDocuments(), 2);
     assert.deepEqual(await Party.findById(initial._id).lean(), before);
-    assert.equal((await register('VALIDE')).status, 201);
+    const wish = 'x'.repeat(100);
+    assert.equal((await register('VALIDE', { wishList: [wish] })).status, 201);
+    assert.deepEqual((await Participant.findOne({ name: 'VALIDE' })).wishList, [wish]);
     assert.equal(await Participant.countDocuments(), 3);
 });
 

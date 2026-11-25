@@ -38,6 +38,9 @@ function normalizeParticipant(body, partial = false) {
             throw new PartyOperationError(400, 'La liste de souhaits doit être un tableau de textes.');
         }
         values.wishList = wishes.map(item => item.trim()).filter(Boolean).slice(0, 3);
+        if (values.wishList.some(wish => wish.length > 100)) {
+            throw new PartyOperationError(400, 'Chaque souhait est limité à 100 caractères. Raccourcissez-le ou laissez le champ vide.', 'WISH_TOO_LONG');
+        }
     }
     if (partial && !Object.keys(values).length) {
         throw new PartyOperationError(400, 'Indiquez au moins un champ à modifier.');

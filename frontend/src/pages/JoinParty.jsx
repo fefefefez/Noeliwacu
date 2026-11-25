@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addParticipant, getParty } from "../services/api";
 import Alert from "../components/Alert";
+
+const MAX_WISH_LENGTH = 100;
 
 export default function JoinParty() {
     const navigate = useNavigate();
@@ -17,10 +19,14 @@ export default function JoinParty() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const lookupId = useRef(0);
+    const submitting = useRef(false);
 
     const loadPartyInfo = useCallback(async () => {
+        const requestId = ++lookupId.current;
         try {
             const data = await getParty(partyCode);
+            if (requestId !== lookupId.current) return;
             if (data.success) {
                 setPartyInfo(data.party);
                 setError('');
@@ -28,7 +34,9 @@ export default function JoinParty() {
                 setError(data.message);
                 setPartyInfo(null);
             }
-        } catch (err) {
+        } catch {
+            if (requestId !== lookupId.current) return;
+            setPartyInfo(null);
             setError('Erreur lors du chargement de la fête');
         }
     }, [partyCode]);
@@ -39,6 +47,18 @@ export default function JoinParty() {
         }
     }, [partyCode, loadPartyInfo]);
 
+    function changePartyCode(value) {
+        if (submitting.current) return;
+        const nextCode = value.toUpperCase();
+        if (nextCode === partyCode) return;
+        lookupId.current++;
+        setPartyCode(nextCode);
+        setPartyInfo(null);
+        setFormData(previous => ({ ...previous, familyGroup: '' }));
+        setError('');
+        setSuccess('');
+    }
+
     const handleWishListChange = (index, value) => {
         const newWishList = [...formData.wishList];
         newWishList[index] = value;
@@ -47,22 +67,29 @@ export default function JoinParty() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting.current || partyInfo?.drawDone) return;
         setError('');
         setSuccess('');
-        setLoading(true);
 
         if (!partyInfo) {
             setError('Veuillez entrer un code de fête valide');
-            setLoading(false);
             return;
         }
+
+        const wishList = formData.wishList.map(wish => wish.trim()).filter(Boolean);
+        if (wishList.some(wish => wish.length > MAX_WISH_LENGTH)) {
+            setError(`Chaque souhait est limité à ${MAX_WISH_LENGTH} caractères. Raccourcissez-le ou laissez le champ vide.`);
+            return;
+        }
+        submitting.current = true;
+        setLoading(true);
 
         try {
             const data = await addParticipant(partyCode, {
                 name: formData.name,
                 email: formData.email,
                 familyGroup: formData.familyGroup,
-                wishList: formData.wishList.filter(w => w.trim() !== '')
+                wishList
             });
 
             if (data.success) {
@@ -74,11 +101,13 @@ export default function JoinParty() {
                     wishList: ['', '', '']
                 });
             } else {
-                setError(data.message);
+                if (data.code === 'DRAW_ALREADY_EXISTS') setPartyInfo(previous => ({ ...previous, drawDone: true }));
+                setError(data.message || 'L’inscription a été refusée.');
             }
-        } catch (err) {
-            setError(err.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
+        } catch {
+            setError('Impossible de confirmer l’inscription. Demandez à l’organisateur de vérifier la liste avant de réessayer.');
         } finally {
+            submitting.current = false;
             setLoading(false);
         }
     };
@@ -99,7 +128,8 @@ export default function JoinParty() {
                             type="text"
                             placeholder="ABC123"
                             value={partyCode}
-                            onChange={(e) => setPartyCode(e.target.value.toUpperCase())}
+                            onChange={(e) => changePartyCode(e.target.value)}
+                            disabled={loading}
                             maxLength={6}
                             style={{ textTransform: 'uppercase', margin: 0 }}
                         />
@@ -123,8 +153,10 @@ export default function JoinParty() {
                         </div>
                     )}
 
+                    {partyInfo?.drawDone && !error && <p role="status">Le tirage est enregistré. Les inscriptions sont clôturées.</p>}
+
                     {/* Formulaire d'inscription */}
-                    {partyInfo && (
+                    {partyInfo && !partyInfo.drawDone && (
                         <form onSubmit={handleSubmit} style={{ marginTop: '30px' }}>
                             <div>
                                 <label>Votre Nom *</label>
@@ -181,25 +213,20 @@ export default function JoinParty() {
                             <div style={{ marginTop: '20px' }}>
                                 <label>Wishlist (optionnel - max 3 articles)</label>
                                 <small style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', display: 'block', marginBottom: '10px' }}>
-                                    Aidez votre Secret Santa à choisir le cadeau parfait !
+                                    {MAX_WISH_LENGTH} caractères maximum par souhait.
                                 </small>
                                 {formData.wishList.map((wish, index) => (
                                     <input
                                         key={index}
                                         type="text"
                                         placeholder={`Idée cadeau ${index + 1}`}
+                                        maxLength={MAX_WISH_LENGTH}
                                         value={wish}
                                         onChange={(e) => handleWishListChange(index, e.target.value)}
                                     />
                                 ))}
                             </div>
 
-                            {/* ✅ ALERTES INTÉGRÉES DANS LE FORMULAIRE */}
-                            <Alert
-                                type="error"
-                                message={error}
-                                onClose={() => setError('')}
-                            />
 
                             <Alert
                                 type="success"
@@ -219,6 +246,8 @@ export default function JoinParty() {
                             </button>
                         </form>
                     )}
+
+                    <Alert type="error" message={error} onClose={() => setError('')} />
 
                     <button
                         onClick={() => navigate('/')}
